@@ -1,0 +1,130 @@
+Space Scanner
+-------------
+
+- Prop for halloween costume
+
+Ingredients:
+- Arduino Nano (AVR ATMega328p)
+- Neopixel strip on front
+  - Does a "scanning" pattern
+  - Cover with diffuser tube
+- 4-digit 14 segment display (I2C)
+  - Displays random characters (like Predator) after a "scan"
+  - Lights up with "progress" as scan completes.  Maybe 4-second delay.
+- Red and Green buttons on front (GPIO)
+  - Hold green to do a scan
+  - Hit red to clear scan
+- Switch (Power)
+  - toggle switch or rocker?
+  - Mount to top or side?
+- LED(s) on top next to buttons?
+  - Maybe behind a jewel (old star trek style)
+  - Could be GPIO (single color) or neopixel.
+- Sounds
+  - Power On / Off
+    - BTTF time circuits?
+  - Active scan
+    - Star Trek TNG tricorder sound
+  - Scan complete (displaying results on 4-character LCD)
+    - Alien computer "speech" sound
+  - Clear reading
+    - BTTF Delorean time circuits "clear"
+  - Reject input
+    - Star Trek "access denied" bloop
+    - Half-life 2 / Portal denied chirp
+- Sound Hardware
+  - surface transducer mounted to inside of case
+  - SDCard for sound clip storage
+  - Single-channel amplifier
+  - ATMega 10-bit DAC
+- Power
+  - Big flat LIPO (whatever can fit)
+  - panel-mounted USB for recharging
+    - Probably need to cut the cable and desolder USB header on Nano board to make it fit.
+  - Charger and step-up (5V) power board (5V needed for Neopixels)
+- Shaker
+  - Add a shake sensor on a GPIO
+  - Use to cause reactions to getting smacked.
+
+
+State machine:
+
+Power On
+--------
+ft_pattern(FTSEG_POWERON)
+play_sound_blocking(SOUND_POWERON)
+next_state = idle
+
+
+Idle
+----
+if start:
+  if results_shown:
+    ftseg_pattern(FTSEG_BLINK)
+    play_sound_blocking(SOUND_NEEDS_CLEARING)
+    ftseg_pattern(FTSEG_IDLE)
+    next_state = idle
+  else:
+    ftseg_pattern(FTSEG_SCAN_START)
+    next_state = scan_start
+else if clear:
+  if scan_results_shown:
+    ftseg_pattern(FTSEG_CLEAR)
+    play_sound_blocking(SOUND_CLEARING)
+    scan_results_shown = false
+  else:
+    ftseg_pattern(FTSEG_CANT_CLEAR)
+    play_sound_blocking(SOUND_CANT_CLEAR)
+  next_state = idle
+
+
+Scan Start
+---------- 
+if scan_results_shown:
+  play_sound_blocking(SOUND_NEEDS_CLEARING)
+   next_state = idle
+ else:
+   neopixel_strip_pattern(PATTERN_SCAN_START)
+   play_sound_blocking(SOUND_SCAN_START)
+   next_state = scan_in_progress
+
+
+Scan in Progress
+----------------
+if start:
+  ftseg_pattern(FTSEG_SCANNING)
+  if scanstart_timer_expired:
+    neopixel_strip_pattern(PIXEL_SCANNING_ENOUGH)
+    play_sound_looping(SOUND_SCANNING_ENOUGH)
+  else:
+    neopixel_strip_pattern(PIXEL_SCANNING)
+    play_sound_looping(SOUND_SCANNING)
+  next_state = scan_in_progress
+else:
+  ftseg_pattern(FTSEG_SCANNING_END)
+  neopixel_strip_pattern(PIXEL_SCANNING_END)
+  if scanstart_timer_expired:
+    play_sound_blocking(SOUND_SCANNING_END_SUCCESS)
+    next_state = scan_end_success
+  else:
+    play_sound_blocking(SOUND_SCANNING_END_FAIL)
+    next_state = scan_end_fail
+
+Scan End Success
+----------------
+ftseg_pattern(FTSEG_PATTERN_SCAN_SUCCESS)
+neopixel_strip_pattern(PIXEL_SHUTDOWN)
+play_sound_blocking(SOUND_SCAN_END_SUCCESS)
+ftseg_draw_random_symbols()
+play_sound_blocking(SOUND_FTSEG_SHOW)
+scan_results_shown = true
+next_state = idle
+
+Scan End Fail
+-------------
+ftseg_pattern(FTSEG_PATTERN_SCAN_FAIL)
+neopixel_strip_pattern(PIXEL_SHUTDOWN)
+play_sound_blocking(SOUND_SCAN_END_FAIL)
+next_state = idle
+
+

@@ -1,0 +1,67 @@
+digraph {
+    label="SpaceScanner FSM"
+    compound=true;
+
+    off->off[label="!power_on"];
+    off->init[label="power_on"];
+    init->idle;
+
+    // self_test->idle[label="pass", color=green];
+    // self_test->failure[label="fail", color=red];
+    // failure->power_off;
+    subgraph idle {
+        label="Idle";
+        idle->idle[label="!start"];
+        idle->scan_start[label="start"];
+    }
+
+    
+    subgraph cluster {
+        label="Scanning";
+        /* Scan Start
+         * ---------- 
+         * if scan_results_shown:
+         *   play_sound_blocking(SOUND_NEEDS_CLEARING)
+         *   next_state = cluster_idle
+         * else:
+         *   neopixel_strip_pattern(PATTERN_SCAN_START)
+         *   play_sound_blocking(SOUND_SCAN_START)
+         *   next_state = scan_in_progress
+         */
+        scan_start->idle[label="scan_results_shown"];
+        scan_start->scan_in_progress[label="!scan_results_shown"];
+        
+        /* Scan in Progress
+         * ----------------
+         * if start:
+         *   if scanstart_timer_expired:
+         *     neopixel_strip_pattern(PATTERN_SCANNING)
+         *     play_sound_looping(SOUND_SCANNING_ENOUGH)
+         *     next_state = scan_in_progress
+         *   else:
+         *     play_sound_looping(SOUND_SCANNING)
+         *     next_state = scan_
+         * if scanstart_timer_expired:
+         *   if start:
+         *     play_sound(SOUND_SCAN_LONG_ENOUGH)
+         *     next_state = scan_in_success
+         *   else:
+         *     play_sound(SOUND_)
+         * else if !scanstart_timer_expired && start:
+         *   play_sound_nonblocking(SOUND_SCANNING)
+         *   next_state = scan_in_progress
+         * else if !scanstart_timer_expired && !start:
+         *   play_sound_nonblocking(SOUND_SCAN_SHORT)
+         *   next_state = scan_fail
+         */
+        scan_in_progress->scan_start[label="!scanstart_timer_expired && start"]
+        scan_in_progress->scan_ending_success[label="scanstart_timer_expired"]
+
+        /* Scan Success
+         * ------------
+         * play_sound_blocking(SOUND_SCAN_FAIL)
+         */
+
+    }
+
+}
