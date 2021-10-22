@@ -13,44 +13,40 @@ void spi_init() {
     SPI_PORT |= (SPI_MISO | SPI_SS);
     spi_slave_deselect();
 
-    /* SCK and slave selects need to be output */
+    /* Set pin directions */
     SPI_DDR |= (SPI_MOSI | SPI_SCK | SPI_SS);
     SPI_DDR &= ~(SPI_MISO);
-    SPI_SS_DDR |= SPI_SLAVES;
 
-    /* Master mode, Fosc/4 speed */
-    SPCR |= (_BV(SPE) | _BV(MSTR));
+    /* Master mode, Fosc/2 speed */
+    SPCR = (1 << SPE) | (1 << MSTR);
+    SPSR |= (1 << SPI2X);
+    // SPCR |= ((1 << SPE) | (1 << MSTR) );
 }
 
-void spi_xfer_byte(uint8_t tx, uint8_t *rx) {
-    SPCR |= (_BV(SPE) | _BV(MSTR));
+uint8_t spi_xfer_byte(uint8_t tx) {
     SPDR = tx;
     while (!(SPSR & _BV(SPIF)));
-    if (rx)
-        *rx = SPDR;
+    return SPDR;
 }
 
-
-void spi_xfer_dword(uint32_t tx, uint32_t *rx) {
-    uint32_t dword = 0;
-    for (uint8_t i = 0; i < 4; i++) {
-        uint8_t byte;
-        spi_xfer_byte(0, &byte);
-        dword |= ((uint32_t) byte << (8 * (3 - i)));
-    }
-
-    if (rx)
-        *rx = dword;
-}
-
-void spi_xfer_word(uint16_t tx, uint16_t *rx) {
+uint16_t spi_xfer_word(uint16_t tx) {
     uint16_t word = 0;
     for (uint8_t i = 0; i < 2; i++) {
-        uint8_t byte;
-        spi_xfer_byte(0, &byte);
-        word |= ((uint16_t) byte << (8 * (1 - i)));
+        SPDR = tx;
+        while (!(SPSR & _BV(SPIF)));
+        word |= ((uint16_t) SPDR << (8 * (1 - i)));
     }
-
-    if (rx)
-        *rx = word;
+    return word;
 }
+
+uint32_t spi_xfer_dword(uint32_t tx) {
+    uint32_t dword = 0;
+    for (uint8_t i = 0; i < 4; i++) {
+        SPDR = tx;
+        while (!(SPSR & _BV(SPIF)));
+        dword |= ((uint32_t) SPDR << (8 * (3 - i)));
+    }
+    return dword;
+}
+
+

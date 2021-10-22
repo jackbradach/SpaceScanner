@@ -8,6 +8,7 @@
 #include "config.h"
 #include "dbg.h"
 #include "uart.h"
+#include "spi.h"
 #include "neopixels.h"
 // #include "twi_master.h"
 
@@ -36,6 +37,7 @@ static void init(void)
     dbg_init();
     uart_init();
     spi_init();
+    sdcard_init();
     // twi_master_init();
 
     // neopixels_init_chain(&np_chain, &NEOPIXEL_CHAIN_PORT,

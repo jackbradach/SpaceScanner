@@ -4,9 +4,10 @@ set(SRC
     led_gamma.c
     main.c
     neopixels.c
-    uart.c
     # timer.c
+    sdcard.c
 	spi.c
+    uart.c
 	# mcp23s18.c
 	# ioexp_lcd_shim.c
 	# ioexp_input_shim.c
