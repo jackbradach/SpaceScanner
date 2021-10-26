@@ -19,8 +19,7 @@ void spi_init() {
 
     /* Master mode, Fosc/2 speed */
     SPCR = (1 << SPE) | (1 << MSTR);
-    SPSR |= (1 << SPI2X);
-    // SPCR |= ((1 << SPE) | (1 << MSTR) );
+    // SPSR |= (1 << SPI2X);
 }
 
 uint8_t spi_xfer_byte(uint8_t tx) {
