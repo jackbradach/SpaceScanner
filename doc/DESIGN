@@ -1,6 +1,39 @@
 Space Scanner
 -------------
 
+2022/05/11:
+- This is the project.  Stop looking for the esp32 version.  We decided it'd
+work on an avr328p and that'd make it easier to fit things in the case.
+- If the speaker isn't hooked up or on the desk, look in the transducers box.
+
+- Bolt a DHT-22 (or whatever the external version is called) onto the right side.
+  - Use some shrink-tubing to cover the exposed wires into the case.  Use an
+  LED shroud to make the tube-to-case transition look nice.
+- This is mocked up with post-its on the skinnier case on the desk!
+  - I should start a project box for this...
+- Three buttons across bottom, in order:
+  - Temperature in Celsius (Green)
+  - % Humidity (Yellow)
+  - Temperature in Fahrenheit (Red)
+- Holding button longer averages more samples.
+  - do something fun to indicate this is happening.
+- Readings from hardware are near instantaneous.  Add a delay and some animation / sound to
+encourage taking time on readings.  Do progress as below?  It should average over this time.
+- Minimum features:
+  - Push buttons and take a reading.
+  - Display result on 14-segment (i2c) when button released.
+- Should probably do modules in this roughly this order (ordered by necessary and then easy to hard):
+  - Buttons handling
+    - Need to send message about up / down events to state machine handler.
+    - This should hook the pinchange interrupt.
+  - DHT-22 reading
+    - Weird serial protocol, see datasheet.
+  - State Machine
+    - Needs to do IDLE--[when button]-->READ--[until !button]-->SHOW-->IDLE
+    - Can we do this with protothreads?
+
+
+2021/10/25:
 - Prop for halloween costume
 
 Ingredients:

@@ -7,7 +7,6 @@ const uint8_t PROGMEM crc7_table[];
 
 uint8_t crc7_add(uint8_t crc, uint8_t msg) {
     uint8_t offset = (crc << 1) ^ msg;
-    printf("msg: %02x  crc: %02x  offset: %i\n", msg, crc, offset);
     return pgm_read_byte(&crc7_table[offset]);
 }
 

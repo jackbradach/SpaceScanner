@@ -10,7 +10,9 @@
 #include "uart.h"
 #include "spi.h"
 #include "neopixels.h"
+#include "dac.h"
 // #include "twi_master.h"
+// #include "timer.h"
 
 #include "pixels.h"
 #if 0
@@ -29,8 +31,29 @@ pixels_anim anim_sine;
 pixels_anim anim_startup;
 #endif
 
+/* Application state; extend as needed! */
+// typedef enum {
+//     STATE_IDLE,
+//     STATE_SAMPLING,
+//     STATE_AVERAGING,
+//     STATE_SHOW
+// } app_fsm_state_t;
+
+typedef enum {
+    BUTTONS_NONE = 0x0,
+    BUTTONS_GREEN = 0x1,
+    BUTTONS_YELLOW = 0x2,
+    BUTTONS_RED = 0x4
+} buttons_t;
 
 neopixels_t np_chain;
+
+// struct app_state {
+//     app_fsm_state_t fsm_state = STATE_IDLE;
+
+// };
+
+
 
 static void init(void)
 {
@@ -43,6 +66,69 @@ static void init(void)
     // neopixels_init_chain(&np_chain, &NEOPIXEL_CHAIN_PORT,
     //                        NEOPIXEL_CHAIN_PIN, NEOPIXEL_CHAIN_LENGTH);
     sei();
+
+    /* Main application loop! */
+    while (1) {
+
+        // Any event messages pending?  Dequeue and process.
+        // TODO later - just start with polling!
+        // switch (event_msg) {
+        // case BUTTON_DOWN:
+
+        // case BUTTON_UP:
+        // case STARTUP:
+        // default:
+        // }
+        // if (!buttons_pending) {
+
+        // }
+
+        // get_buttons is a simple debouncer that reads all three buttons
+        // and returns an button_t.  It is responsible for handling
+        // priority (which should go left-to-right across the device)
+        // This function should block until the pin change interrupt fires.
+        // Maybe go to sleep if we can to save battery?
+        uint8_t btns = get_buttons();
+        btns = 0x1;
+        // find first set bit
+        // We don't need this until the read is complete!  It's only for display.
+
+        /* If no button is pressed, just go back up. Or sleep? */
+        if (!btns) { continue };
+
+        /* This should just read one sample for now... */
+        // TODO - decode dht2_read here based on button.
+        // TODO - need to find 14-segment driver code from other project.
+        // TODO - can just print to serial for now.
+        // TODO - need a timestruct, since there could be more digits than can be displayed.
+        // TODO - for now just display XX.YC
+        // DHT22 protocol is timing-sensitive, this'll be fun...
+
+        // TODO - make dht22_read return a bogus value for now, work on display next.
+        
+        // Do some masking fuckery on the DHT22 data to extract the needed unit.
+        // Wait, 
+        uint8_t digit_int, digit_frac;
+        sample_unit_t unit;
+        dht22_get_measurement(&digit_int, &digit_frac, &unit);
+        print("digit_int: %0x\tdigit_frac: %0x", digit_int, digit_frac);
+        data_unit = dht22_get_unit(dht22_data);
+        
+        display_set(digit_int, digit_frac, data_unit);
+        /* Sleep 5 seconds at the end (locking out the keypad) before continuing. */
+
+
+    }
+
+}
+
+buttons_t get_buttons() {
+    // TODO - Figure out which pins on the test board can have buttons.
+    // TODO - try to make them adjacent in a port.  They need to support
+    // TODO - pin change interrupt, although we might not be using that yet.
+    uint8_t buttons = BUTTON_PORT & BUTTON_MASK >> BUTTON_SHIFT;
+
+    return BUTTONS_NONE;
 }
 
 
@@ -68,12 +154,7 @@ int move_color(uint8_t *color, uint8_t target, int rate)
         c += rate;
     } else if (target < c) {
         c -= rate;
-    } 
-    
-    return (c == target ?
-
-    else {
-        return 0;
+    } - USB 
     }
     return 1;
 }

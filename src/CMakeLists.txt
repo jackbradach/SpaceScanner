@@ -1,6 +1,7 @@
 # Source containing 'main()'
 set(SRC
     crc7.c
+    dac.c
     dbg.c
     led_gamma.c
     main.c

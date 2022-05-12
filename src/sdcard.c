@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include <util/delay.h>
 
@@ -66,7 +67,7 @@ void sdcard_init() {
     /* */
     rc = sdcard_send_command(GO_IDLE_STATE, 0);
     printf("reset rc = %i\n", rc);
-    rc = sdcard_send_command(SEND_IF_COND, 0x1AA);
+    rc = sdcard_send_if_cond();
     printf("send_if = 0x%02x\n", rc);
     
     // rc = sdcard_set_blocklen(512);
@@ -85,13 +86,9 @@ uint8_t sdcard_send_command(uint8_t idx, uint32_t arg) {
     idx = SDCARD_INDEX_FIXED | (idx & SDCARD_INDEX_MASK);
     crc = 0;
     if (crc_calculation_enable) {
-        crc = crc7_add(crc, idx);
-        crc = crc7_add(crc, (arg & 0xff000000) >> 24);
-        crc = crc7_add(crc, (arg & 0x00ff0000) >> 16);
-        crc = crc7_add(crc, (arg & 0x0000ff00) >> 8);
-        crc = crc7_add(crc, (arg & 0x000000ff));
-        crc = SDCARD_CMD0_CRC;
+        crc = sdcard_calculate_crc(idx, arg);
     }
+    crc = (crc << 1) | SDCARD_CRC_FIXED;
     spi_slave_select();
     spi_xfer_byte(idx);
     spi_xfer_dword(arg);
@@ -102,7 +99,23 @@ uint8_t sdcard_send_command(uint8_t idx, uint32_t arg) {
 }
 
 uint32_t sdcard_send_if_cond() {
-    
+    uint8_t crc;
+    uint32_t resp;
+    uint8_t idx;
+    // TODO - finish me
+    idx = SDCARD_INDEX_FIXED | (idx & SDCARD_INDEX_MASK);
+    crc = 0;
+    return resp;
+}
+
+uint8_t sdcard_calculate_crc(uint8_t idx, uint32_t arg) {
+    uint8_t crc;
+    crc = crc7_add(crc, idx);
+    crc = crc7_add(crc, (arg & 0xff000000) >> 24);
+    crc = crc7_add(crc, (arg & 0x00ff0000) >> 16);
+    crc = crc7_add(crc, (arg & 0x0000ff00) >> 8);
+    crc = crc7_add(crc, (arg & 0x000000ff));
+    return crc;
 }
 
 void sdcard_crc_enable() {

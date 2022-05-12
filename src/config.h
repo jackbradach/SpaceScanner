@@ -31,6 +31,6 @@
 #define CONFIG_SPI_DDR DDRB
 #define CONFIG_SPI_MISO PB4
 #define CONFIG_SPI_MOSI PB3
-#define CONFIG_SPI_SS PB2
+#define CONFIG_SPI_SS PB0
 #define CONFIG_SPI_SCK PB5
 #endif // _CONFIG_H_
