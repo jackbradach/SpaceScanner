@@ -33,4 +33,21 @@
 #define CONFIG_SPI_MOSI PB3
 #define CONFIG_SPI_SS PB0
 #define CONFIG_SPI_SCK PB5
+
+/* DHT22 Temperature / Humidity Sensor */
+#define CONFIG_DHT22_PORT PORTC
+#define CONFIG_DHT22_PIN  PINC
+#define CONFIG_DHT22_DDR  DDRC
+#define CONFIG_DHT22_BIT  PC0
+
+/* Buttons */
+#define CONFIG_BUTTON_PORT       PORTC
+#define CONFIG_BUTTON_DDR        DDRC
+#define CONFIG_BUTTON_GREEN_PIN  PC1
+#define CONFIG_BUTTON_YELLOW_PIN PC2
+#define CONFIG_BUTTON_RED_PIN    PC3
+
+
+
+
 #endif // _CONFIG_H_
