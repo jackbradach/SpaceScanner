@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #include <avr/io.h>
 #include <util/twi.h>
 
@@ -11,8 +13,12 @@ void twi_send(uint8_t data)
     twi_block_on_twint();
 }
 
-uint8_t twi_recv() {
-    TWCR = _BV(TWEN) | _BV(TWINT);
+uint8_t twi_recv(bool ack) {
+    if (ack) {
+        TWCR = _BV(TWEN) | _BV(TWINT) | _BV(TWEA);
+    } else {
+        TWCR = _BV(TWEN) | _BV(TWINT);
+    }
     twi_block_on_twint();
     return TWDR;
 }
@@ -46,13 +52,12 @@ void twi_master_read(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len)
     twi_start();
 
     /* [SLA][R][Dout] */
-    twi_send(sla | 1);
+    twi_send(sla << 1| 1);
 
     /* Wait for data to be sent by the slave. */
     for (uint8_t i = 0; i < len; i++) {
-        data[i] = twi_recv();
+        data[i] = twi_recv(!(i == (len-1)));
     }
-
     /* NAK the byte and do a stop. */
     twi_stop();
 

@@ -3,7 +3,7 @@
 #ifndef _TWI_MASTER_H_
 #define _TWI_MASTER_H_
 
-#define TWI_FREQ 400000
+#define TWI_FREQ 100000
 
 inline void twi_master_init(void)
 {
