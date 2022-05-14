@@ -8,7 +8,8 @@ set(SRC
     neopixels.c
     # timer.c
     sdcard.c
-	spi.c
+	# spi.c
+    twi_master.c
     uart.c
 	# mcp23s18.c
 	# ioexp_lcd_shim.c

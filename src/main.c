@@ -11,7 +11,7 @@
 #include "spi.h"
 #include "neopixels.h"
 #include "dac.h"
-// #include "twi_master.h"
+#include "twi_master.h"
 // #include "timer.h"
 
 #include "pixels.h"
@@ -94,7 +94,7 @@ typedef struct {
 bool dht22_read(dht22_measurement_t *meas);
 
 
-bool dht22_init() {
+void dht22_init() {
     /* Set pin to input */
     DHT22_PORT |= _BV(DHT22_BIT);
     DHT22_DDR &= ~_BV(DHT22_BIT);
@@ -268,7 +268,7 @@ static void init(void)
     dht22_init();
     // spi_init();
     // sdcard_init();
-    // twi_master_init();
+    twi_master_init();
 
     // neopixels_init_chain(&np_chain, &NEOPIXEL_CHAIN_PORT,
     //                        NEOPIXEL_CHAIN_PIN, NEOPIXEL_CHAIN_LENGTH);
@@ -336,6 +336,12 @@ int main(void)
         
         
         // display_set(digit_int, digit_frac, data_unit);
+        uint8_t testo[] = {0xAA, 0xBB, 0xCC, 0xDD};
+        uint8_t i2c_rd_data[4];
+        #define HT16K33_I2C_ADDR 0x71
+        twi_master_write(HT16K33_I2C_ADDR, 0x1234, testo, 4);
+        twi_master_read(HT16K33_I2C_ADDR, 0x1234, i2c_rd_data, 4);
+
         /* Sleep 5 seconds at the end (locking out the keypad) before continuing. */
         _delay_ms(2000);
     }
