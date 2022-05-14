@@ -45,6 +45,7 @@ typedef enum {
     BUTTONS_YELLOW = 0x2,
     BUTTONS_RED = 0x4
 } buttons_t;
+buttons_t get_buttons();
 
 neopixels_t np_chain;
 
@@ -54,79 +55,145 @@ neopixels_t np_chain;
 // };
 
 
+// ** Timers section **
+// TODO - move this section to timers.c!
 
-static void init(void)
-{
-    dbg_init();
-    uart_init();
-    spi_init();
-    sdcard_init();
-    // twi_master_init();
+void timers_init() {
+    // Set up free-running timer for measuring microseconds.
+    // 16mHz / prescaler = 
 
-    // neopixels_init_chain(&np_chain, &NEOPIXEL_CHAIN_PORT,
-    //                        NEOPIXEL_CHAIN_PIN, NEOPIXEL_CHAIN_LENGTH);
-    sei();
+    // 16-bit running @ 20mHz, overflow at 20k -> 1khz.
+    // timer_ms_tick = 0;
+    // TCCR1A = 0;
+    // TCCR1B = _BV(WGM12) | _BV(CS10);
+    // OCR1A = 20000;
+    // TIMSK1 |= _BV(OCIE1A);
 
-    /* Main application loop! */
-    while (1) {
+    // TCCR0A = _BV(WGM01);
+    // TCCR0B = _BV(CS01);
+    // OCR0A = 250;
 
-        // Any event messages pending?  Dequeue and process.
-        // TODO later - just start with polling!
-        // switch (event_msg) {
-        // case BUTTON_DOWN:
+}
 
-        // case BUTTON_UP:
-        // case STARTUP:
-        // default:
-        // }
-        // if (!buttons_pending) {
+// ** DHT22 Section ** 
+// TODO - move this section to dht22.c!
 
-        // }
+/* Structure for DHT22 measurements. */
+#define DHT22_PORT CONFIG_DHT22_PORT
+#define DHT22_DDR  CONFIG_DHT22_DDR
+#define DHT22_PIN  CONFIG_DHT22_PIN
+#define DHT22_BIT  CONFIG_DHT22_BIT
 
-        // get_buttons is a simple debouncer that reads all three buttons
-        // and returns an button_t.  It is responsible for handling
-        // priority (which should go left-to-right across the device)
-        // This function should block until the pin change interrupt fires.
-        // Maybe go to sleep if we can to save battery?
-        uint8_t btns = get_buttons();
-        btns = 0x1;
-        // find first set bit
-        // We don't need this until the read is complete!  It's only for display.
+typedef struct {
+    uint8_t rh_integral;
+    uint8_t rh_decimal;
+    uint8_t t_integral;
+    uint8_t t_decimal;
+} dht22_measurement_t;
 
-        /* If no button is pressed, just go back up. Or sleep? */
-        if (!btns) { continue };
-
-        /* This should just read one sample for now... */
-        // TODO - decode dht2_read here based on button.
-        // TODO - need to find 14-segment driver code from other project.
-        // TODO - can just print to serial for now.
-        // TODO - need a timestruct, since there could be more digits than can be displayed.
-        // TODO - for now just display XX.YC
-        // DHT22 protocol is timing-sensitive, this'll be fun...
-
-        // TODO - make dht22_read return a bogus value for now, work on display next.
-        
-        // Do some masking fuckery on the DHT22 data to extract the needed unit.
-        // Wait, 
-        uint8_t digit_int, digit_frac;
-        sample_unit_t unit;
-        dht22_get_measurement(&digit_int, &digit_frac, &unit);
-        print("digit_int: %0x\tdigit_frac: %0x", digit_int, digit_frac);
-        data_unit = dht22_get_unit(dht22_data);
-        
-        display_set(digit_int, digit_frac, data_unit);
-        /* Sleep 5 seconds at the end (locking out the keypad) before continuing. */
+bool dht22_read(dht22_measurement_t *meas);
 
 
+bool dht22_init() {
+    /* Set pin to input */
+    DHT22_PORT |= _BV(DHT22_BIT);
+    DHT22_DDR &= ~_BV(DHT22_BIT);
+
+    /* Set up a timer with 1us resolution */
+    TCCR0A = 0;
+    TCCR0B = _BV(CS01);
+    TIMSK0 = 0;
+}
+
+inline bool dht22_data() {
+    return !!(DHT22_PIN & _BV(DHT22_BIT));
+}
+
+bool dht22_crc_check(uint32_t data, uint8_t crc) {
+    uint8_t *bptr = (uint8_t *) &data;
+    uint8_t sum = 0;
+    for (uint8_t i = 0; i < 4; i++) {
+        sum += bptr[i];
+    }
+    return (sum == crc);
+}
+
+bool dht22_read(dht22_measurement_t *meas) {
+    uint32_t data = 0;
+    uint8_t checksum = 0;
+    uint8_t ticks_hi, ticks_lo;
+    int16_t rh, t_c;
+
+    /* Send start */
+    DHT22_DDR |= _BV(DHT22_BIT);
+    DHT22_PORT &= ~_BV(DHT22_BIT);
+    _delay_ms(18);  // Note: datasheet said 500uS here?
+    DHT22_PORT |= _BV(DHT22_BIT);
+    DHT22_DDR &= ~_BV(DHT22_BIT);
+    while(dht22_data());  // 80us low pulse from DHT
+    while(!dht22_data());  // 80us high pulse from DHT ("get ready")
+    while(dht22_data());
+
+    /* Get data */
+    for (int8_t bit = 31; bit >= 0; bit--) {
+        uint8_t ticks;
+        while(!dht22_data());
+        TCNT0 = 0;
+        while(dht22_data());
+        ticks = TCNT0 >> 1;
+        if (ticks > 50) {
+            data |= 1ULL << bit;
+            dbg_hi();
+        } else {
+            dbg_lo();
+        }
     }
 
+    /* Get checksum */
+    for (int8_t bit = 7; bit >=0; bit--) {
+        uint8_t ticks;
+        while(!dht22_data());
+        TCNT0 = 0;
+        while(dht22_data());
+        ticks = TCNT0 >> 1;
+        if (ticks > 50) {
+            checksum |= 1ULL << bit;
+            dbg_hi();
+        } else {
+            dbg_lo();
+        }
+    }
+
+    /* Verify the CRC was correct. */
+    if (!dht22_crc_check(data, checksum)) {
+        return false;
+    }
+
+    /* Unpack the measurement. */
+    rh = data >> 16;
+    t_c = data & 0xEFFF;
+    meas->rh_integral = rh / 10;
+    meas->rh_decimal = rh % 10;
+    meas->t_integral = t_c / 10;
+    meas->t_decimal = t_c % 10;
+    if (data & 0x8000) {
+        meas->t_integral *= -1;
+    }
+
+    return true;
+}
+
+void dht22_print(dht22_measurement_t *meas) {
+    printf("T: %d.%dC  RH: %d.%d%%\n",
+            meas->t_integral, meas->t_decimal,
+            meas->rh_integral, meas->rh_decimal);
 }
 
 buttons_t get_buttons() {
     // TODO - Figure out which pins on the test board can have buttons.
     // TODO - try to make them adjacent in a port.  They need to support
     // TODO - pin change interrupt, although we might not be using that yet.
-    uint8_t buttons = BUTTON_PORT & BUTTON_MASK >> BUTTON_SHIFT;
+    // uint8_t buttons = BUTTON_PORT & BUTTON_MASK >> BUTTON_SHIFT;
 
     return BUTTONS_NONE;
 }
@@ -192,6 +259,24 @@ void anim_random_color_fader(neopixels_t *chain)
     }
 }
 
+
+/* Call all the component init functions. */
+static void init(void)
+{
+    dbg_init();
+    uart_init();
+    dht22_init();
+    // spi_init();
+    // sdcard_init();
+    // twi_master_init();
+
+    // neopixels_init_chain(&np_chain, &NEOPIXEL_CHAIN_PORT,
+    //                        NEOPIXEL_CHAIN_PIN, NEOPIXEL_CHAIN_LENGTH);
+    sei();
+    // printf("** Alive!! **\n");
+    
+}
+
 /* Micocontroller firmware entry point */
 int main(void) __attribute__((OS_main));
 int main(void)
@@ -200,13 +285,59 @@ int main(void)
 
     init();
     dbg_hi();
-    printf("alive!\n");
+    printf("\n** Alive!! **\n");
     dbg_lo();
     // anim_random_color_fader(&np_chain);
 
-
+    /* Main application loop! */
     while (1) {
-        _delay_ms(1000);
+
+        // Any event messages pending?  Dequeue and process.
+        // TODO later - just start with polling!
+        // switch (event_msg) {
+        // case BUTTON_DOWN:
+
+        // case BUTTON_UP:
+        // case STARTUP:
+        // default:
+        // }
+        // if (!buttons_pending) {
+
+        // }
+
+        // get_buttons is a simple debouncer that reads all three buttons
+        // and returns an button_t.  It is responsible for handling
+        // priority (which should go left-to-right across the device)
+        // This function should block until the pin change interrupt fires.
+        // Maybe go to sleep if we can to save battery?
+        uint8_t btns = get_buttons();
+        btns = 0x1;
+        // find first set bit
+        // We don't need this until the read is complete!  It's only for display.
+
+        /* If no button is pressed, just go back up. Or sleep? */
+        if (!btns) { continue; };
+
+        /* This should just read one sample for now... */
+        // TODO - decode dht2_read here based on button.
+        // TODO - need to find 14-segment driver code from other project.
+        // TODO - can just print to serial for now.
+        // TODO - need a timestruct, since there could be more digits than can be displayed.
+        // TODO - for now just display XX.YC
+        // DHT22 protocol is timing-sensitive, this'll be fun...
+
+        // TODO - make dht22_read return a bogus value for now, work on display next.
+        
+        // Do some masking fuckery on the DHT22 data to extract the needed unit.
+        // Wait, 
+        dht22_measurement_t meas;
+        dht22_read(&meas);
+        dht22_print(&meas);
+        
+        
+        // display_set(digit_int, digit_frac, data_unit);
+        /* Sleep 5 seconds at the end (locking out the keypad) before continuing. */
+        _delay_ms(2000);
     }
    
 //     neopixel_stick_off(&np_stick);
