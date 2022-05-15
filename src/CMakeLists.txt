@@ -3,6 +3,7 @@ set(SRC
     crc7.c
     dac.c
     dbg.c
+    # ht16k33.c
     led_gamma.c
     main.c
     neopixels.c

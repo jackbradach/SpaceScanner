@@ -45,7 +45,7 @@ inline void twi_ack_int(void)
 
 void twi_master_send(uint8_t data);
 void twi_master_write(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len);
-void twi_master_read(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len);
+int twi_master_read(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len);
 
 
 #endif
