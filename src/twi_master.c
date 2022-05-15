@@ -1,3 +1,5 @@
+/* Jankity-ass TWI code; doesn't handle any errors yet or use interrupts! */
+
 #include <stdbool.h>
 
 #include <avr/io.h>
@@ -24,6 +26,8 @@ uint8_t twi_recv(bool ack) {
 }
 
 /* Master write, to sla/addr. */
+// TODO - 2022/05/14 - jbradach - add error checking and make interrupt driven.
+// TODO - should return a value to indicate number of bytes written or an error.
 void twi_master_write(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len)
 {
     twi_start();
@@ -38,8 +42,11 @@ void twi_master_write(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len)
     twi_stop();
 }
 
-/* Master read, from sla/addr. */
-void twi_master_read(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len)
+/* Master read, from sla/addr.  Returns number of bytes read (which should match len). */
+// TODO - 2022/05/14 - jbradach - in addition to all the interrupt-driven mojo, this should do
+// TODO - some amount of error checking.  Otherwise the return value is pointless since there
+// TODO - can't ever be an error.
+int twi_master_read(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len)
 {
     twi_start();
 
@@ -58,9 +65,9 @@ void twi_master_read(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len)
     for (uint8_t i = 0; i < len; i++) {
         data[i] = twi_recv(!(i == (len-1)));
     }
-    /* NAK the byte and do a stop. */
+
     twi_stop();
 
-    return data;
+    return len;
 }
 
