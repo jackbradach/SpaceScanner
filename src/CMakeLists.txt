@@ -4,7 +4,8 @@ set(SRC
     dac.c
     dbg.c
     dht22.c
-    # ht16k33.c
+    ftseg.c
+    ht16k33.c
     led_gamma.c
     main.c
     neopixels.c

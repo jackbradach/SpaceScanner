@@ -3,6 +3,9 @@
 #ifndef _TWI_MASTER_H_
 #define _TWI_MASTER_H_
 
+#include <stdbool.h>
+#include <util/twi.h>
+
 #define TWI_FREQ 100000
 
 inline void twi_master_init(void)
@@ -44,7 +47,9 @@ inline void twi_ack_int(void)
 
 
 void twi_master_send(uint8_t data);
-void twi_master_write(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len);
+uint8_t twi_recv(bool ack);
+void twi_master_mem_write(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len);
+void twi_master_write(uint8_t sla, uint8_t *data, uint8_t len);
 int twi_master_read(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len);
 
 
