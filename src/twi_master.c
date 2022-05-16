@@ -3,10 +3,8 @@
 #include <stdbool.h>
 
 #include <avr/io.h>
-#include <util/twi.h>
 
 #include "twi_master.h"
-
 
 void twi_send(uint8_t data)
 {
@@ -28,14 +26,25 @@ uint8_t twi_recv(bool ack) {
 /* Master write, to sla/addr. */
 // TODO - 2022/05/14 - jbradach - add error checking and make interrupt driven.
 // TODO - should return a value to indicate number of bytes written or an error.
-void twi_master_write(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len)
-{
+// void twi_master_mem_write(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len)
+// {
+//     twi_start();
+
+//     /* [SLA][W][ADDR] */
+//     twi_send(sla << 1);
+//     twi_send(addr >> 8);
+//     twi_send(addr & 0xFF);
+//     for (uint8_t i = 0; i < len; i++) {
+//         twi_send(data[i]);
+//     }
+//     twi_stop();
+// }
+
+void twi_master_write(uint8_t sla, uint8_t *data, uint8_t len) {
     twi_start();
 
     /* [SLA][W][ADDR] */
     twi_send(sla << 1);
-    twi_send(addr >> 8);
-    twi_send(addr & 0xFF);
     for (uint8_t i = 0; i < len; i++) {
         twi_send(data[i]);
     }

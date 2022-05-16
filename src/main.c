@@ -13,6 +13,7 @@
 #include "dac.h"
 #include "dht22.h"
 #include "twi_master.h"
+#include "ftseg.h"
 // #include "timer.h"
 
 #include "pixels.h"
@@ -49,6 +50,7 @@ typedef enum {
 buttons_t get_buttons();
 
 neopixels_t np_chain;
+ftseg_device_handle_t *ftseg;
 
 // struct app_state {
 //     app_fsm_state_t fsm_state = STATE_IDLE;
@@ -170,11 +172,10 @@ int main(void) __attribute__((OS_main));
 int main(void)
 {
   
-
     init();
-    dbg_hi();
+
     printf("\n** Alive!! **\n");
-    dbg_lo();
+    ftseg_init(&ftseg);
     // anim_random_color_fader(&np_chain);
 
     /* Main application loop! */
@@ -206,30 +207,22 @@ int main(void)
         /* If no button is pressed, just go back up. Or sleep? */
         if (!btns) { continue; };
 
-        /* This should just read one sample for now... */
-        // TODO - decode dht2_read here based on button.
-        // TODO - need to find 14-segment driver code from other project.
-        // TODO - can just print to serial for now.
-        // TODO - need a timestruct, since there could be more digits than can be displayed.
-        // TODO - for now just display XX.YC
-        // DHT22 protocol is timing-sensitive, this'll be fun...
-
-        // TODO - make dht22_read return a bogus value for now, work on display next.
-        
-        // Do some masking fuckery on the DHT22 data to extract the needed unit.
-        // Wait, 
+        /* Take an environmental reading. */
         dht22_measurement_t meas;
         dht22_read(&meas);
         dht22_print(&meas);
         
-        
         // display_set(digit_int, digit_frac, data_unit);
-        uint8_t testo[] = {0xAA, 0xBB, 0xCC, 0xDD};
-        uint8_t i2c_rd_data[4];
-        #define HT16K33_I2C_ADDR 0x71
-        twi_master_write(HT16K33_I2C_ADDR, 0x1234, testo, 4);
-        twi_master_read(HT16K33_I2C_ADDR, 0x1234, i2c_rd_data, 4);
+        // uint8_t testo[] = {0xAA, 0xBB, 0xCC, 0xDD};
+        // uint8_t i2c_rd_data[4];
+        // #define HT16K33_I2C_ADDR 0x71
+        // twi_master_write(HT16K33_I2C_ADDR, 0x1234, testo, 4);
+        // twi_master_read(HT16K33_I2C_ADDR, 0x1234, i2c_rd_data, 4);
 
+        
+        // ht16k33_display_off(ht16k33, 0);
+
+        ftseg_write_text(ftseg, 0, "1234");
         /* Sleep 5 seconds at the end (locking out the keypad) before continuing. */
         _delay_ms(2000);
     }
