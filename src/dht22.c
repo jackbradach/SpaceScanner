@@ -34,6 +34,15 @@ void dht22_print(dht22_measurement_t *meas) {
             meas->rh_integral, meas->rh_decimal);
 }
 
+/* Converts reading from celsius to fahrenheit, in place. */
+void dht22_c_to_f(dht22_measurement_t *meas) {
+    float c, f;
+    c = (meas->t_integral * 10) + meas->t_decimal;
+    f = ((9.0/5.0) * c) + 320.0;
+    meas->t_integral = (int) f / 10;
+    meas->t_decimal = (int) f % 10;
+}
+
 bool dht22_read(dht22_measurement_t *meas) {
     uint32_t data = 0;
     uint8_t checksum = 0;

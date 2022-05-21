@@ -57,6 +57,7 @@ ftseg_device_handle_t *ftseg;
 
 // };
 
+#define DELAY_LOOP 1000
 
 // ** Timers section **
 // TODO - move this section to timers.c!
@@ -221,10 +222,28 @@ int main(void)
 
         
         // ht16k33_display_off(ht16k33, 0);
+        char text[5];
+        sprintf(text, "RH%02d", meas.rh_integral);
+        ftseg_write_text(ftseg, 0, text);
+        _delay_ms(DELAY_LOOP);
+        sprintf(text, "C%02d%d", meas.t_integral, meas.t_decimal);
+        ftseg_write_text(ftseg, 0, text);
+        _delay_ms(DELAY_LOOP);
 
-        ftseg_write_text(ftseg, 0, "1234");
+        // float c, f;
+        // int f_bcd, f_int, f_dec;
+        // c = (meas.t_integral * 10) + meas.t_decimal;
+        // f = ((9.0/5.0) * c) + 320.0;
+        // printf("c: %f  f: %f\n", c, f);
+        // f_int = (int) f / 10;
+        // f_dec = (int) f % 10;
+        dht22_c_to_f(&meas);
+        sprintf(text, "F%02d%d", meas.t_integral, meas.t_decimal);
+        ftseg_write_text(ftseg, 0, text);
+
+        // ftseg_test(ftseg,0);
         /* Sleep 5 seconds at the end (locking out the keypad) before continuing. */
-        _delay_ms(2000);
+        _delay_ms(DELAY_LOOP);
     }
    
 //     neopixel_stick_off(&np_stick);

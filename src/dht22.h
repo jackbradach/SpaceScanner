@@ -20,6 +20,7 @@ typedef struct {
 
 void dht22_print(dht22_measurement_t *meas);
 bool dht22_read(dht22_measurement_t *meas);
+void dht22_c_to_f(dht22_measurement_t *meas);
 void dht22_init();
 
 #endif  // __DHT22_H__

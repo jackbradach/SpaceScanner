@@ -43,6 +43,7 @@ uint8_t twi_recv(bool ack) {
 void twi_master_write(uint8_t sla, uint8_t *data, uint8_t len) {
     twi_start();
 
+    // printf("%02x\n", sla);
     /* [SLA][W][ADDR] */
     twi_send(sla << 1);
     for (uint8_t i = 0; i < len; i++) {
