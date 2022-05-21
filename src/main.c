@@ -36,6 +36,7 @@ typedef enum {
 buttons_t buttons_get();
 
 uint8_t buttons;
+uint8_t last_button = 0;
 
 ftseg_device_handle_t *ftseg;
 
@@ -44,7 +45,7 @@ ftseg_device_handle_t *ftseg;
 
 // };
 
-#define DELAY_LOOP 1000
+#define DELAY_LOOP 100
 #define BUTTONS_PORT PORTD
 #define BUTTONS_PIN PIND
 #define BUTTONS_DDR DDRD
@@ -75,8 +76,18 @@ void buttons_init() {
 
 ISR(PCINT2_vect)
 {
-    // Your code here
-    printf("%0x\n", PIND);
+    uint8_t btn = (~BUTTONS_PIN & BUTTONS_MASK) >> BUTTONS_SHIFT;;
+
+    /* last_button only gets updated if one button was pressed. */
+    switch (btn) {
+        case BUTTONS_GREEN:
+        case BUTTONS_YELLOW:
+        case BUTTONS_RED:
+            last_button = btn;
+            break;
+        default:
+            last_button = 0;
+    }
 }
 
 /* Call all the component init functions. */
@@ -136,31 +147,27 @@ int main(void)
         /* Take an environmental reading. */
         dht22_measurement_t meas;
         dht22_read(&meas);
-        dht22_print(&meas);
+        // dht22_print(&meas);
         
-        // display_set(digit_int, digit_frac, data_unit);
-        // uint8_t testo[] = {0xAA, 0xBB, 0xCC, 0xDD};
-        // uint8_t i2c_rd_data[4];
-        // #define HT16K33_I2C_ADDR 0x71
-        // twi_master_write(HT16K33_I2C_ADDR, 0x1234, testo, 4);
-        // twi_master_read(HT16K33_I2C_ADDR, 0x1234, i2c_rd_data, 4);
-
         
         // ht16k33_display_off(ht16k33, 0);
         char text[5];
-        sprintf(text, "RH%02d", meas.rh_integral);
+        switch (last_button) {
+            case BUTTONS_GREEN:
+                sprintf(text, "C%02d%d", meas.t_integral, meas.t_decimal);
+                break;
+            case BUTTONS_YELLOW:
+                sprintf(text, "RH%02d", meas.rh_integral);
+                break;
+            case BUTTONS_RED:
+                dht22_c_to_f(&meas);
+                sprintf(text, "F%02d%d", meas.t_integral, meas.t_decimal);
+                break;
+            default:
+                memset(text, 0, sizeof(text));
+        }
         ftseg_write_text(ftseg, 0, text);
-        _delay_ms(DELAY_LOOP);
-        sprintf(text, "C%02d%d", meas.t_integral, meas.t_decimal);
-        ftseg_write_text(ftseg, 0, text);
-        _delay_ms(DELAY_LOOP);
-
-        dht22_c_to_f(&meas);
-        sprintf(text, "F%02d%d", meas.t_integral, meas.t_decimal);
-        ftseg_write_text(ftseg, 0, text);
-
-        // ftseg_test(ftseg,0);
-        /* Sleep 5 seconds at the end (locking out the keypad) before continuing. */
+        
         _delay_ms(DELAY_LOOP);
     }
    
