@@ -33,7 +33,9 @@ typedef enum {
     BUTTONS_YELLOW = 0x2,
     BUTTONS_RED = 0x4
 } buttons_t;
-buttons_t get_buttons();
+buttons_t buttons_get();
+
+uint8_t buttons;
 
 ftseg_device_handle_t *ftseg;
 
@@ -43,17 +45,39 @@ ftseg_device_handle_t *ftseg;
 // };
 
 #define DELAY_LOOP 1000
+#define BUTTONS_PORT PORTD
+#define BUTTONS_PIN PIND
+#define BUTTONS_DDR DDRD
+#define BUTTONS_MASK 0x1C
+#define BUTTONS_SHIFT 2
+
+// PCINT18 -> PD2 (Green)
+// PCINT19 -> PD3 (Yellow)
+// PCINT20 -> PD4 (Red)
 
 
-buttons_t get_buttons() {
+buttons_t buttons_get() {
     // TODO - Figure out which pins on the test board can have buttons.
     // TODO - try to make them adjacent in a port.  They need to support
     // TODO - pin change interrupt, although we might not be using that yet.
-    // uint8_t buttons = BUTTON_PORT & BUTTON_MASK >> BUTTON_SHIFT;
+    // uint8_t buttons = BUTTONS_PORT & BUTTONS_MASK >> BUTTONS_SHIFT;
 
     return BUTTONS_NONE;
 }
 
+void buttons_init() {
+    BUTTONS_DDR &= ~(_BV(PD4) | _BV(PD3) | _BV(PD2));
+    BUTTONS_PORT |= _BV(PD4) | _BV(PD3) | _BV(PD2);
+
+    PCMSK2 |= _BV(PCINT20) | _BV(PCINT19) | _BV(PCINT18);
+    PCICR |= _BV(PCIE2);
+}
+
+ISR(PCINT2_vect)
+{
+    // Your code here
+    printf("%0x\n", PIND);
+}
 
 /* Call all the component init functions. */
 static void init(void)
@@ -65,7 +89,7 @@ static void init(void)
     // sdcard_init();
     twi_master_init();
 
-   
+    buttons_init();
     // wdt_enable(WDTO_2S);
     sei();
 }
@@ -96,12 +120,12 @@ int main(void)
 
         // }
 
-        // get_buttons is a simple debouncer that reads all three buttons
+        // buttons_get is a simple debouncer that reads all three buttons
         // and returns an button_t.  It is responsible for handling
         // priority (which should go left-to-right across the device)
         // This function should block until the pin change interrupt fires.
         // Maybe go to sleep if we can to save battery?
-        uint8_t btns = get_buttons();
+        uint8_t btns = buttons_get();
         btns = 0x1;
         // find first set bit
         // We don't need this until the read is complete!  It's only for display.
