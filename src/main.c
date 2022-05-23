@@ -36,16 +36,25 @@ typedef enum {
 buttons_t buttons_get();
 
 uint8_t buttons;
-uint8_t last_button = 0;
 
 ftseg_device_handle_t *ftseg;
 
+typedef enum {
+    RESET = 0,
+    IDLE,
+    READ_DHT22,
+    FORMAT_TEXT,
+    WRITE_FTSEG,
+    WAIT_NOBUTTONS,
+} fsm_t;
+
+fsm_t fsm = RESET;
 // struct app_state {
 //     app_fsm_state_t fsm_state = STATE_IDLE;
 
 // };
 
-#define DELAY_LOOP 100
+#define DELAY_LOOP 10
 #define BUTTONS_PORT PORTD
 #define BUTTONS_PIN PIND
 #define BUTTONS_DDR DDRD
@@ -57,14 +66,6 @@ ftseg_device_handle_t *ftseg;
 // PCINT20 -> PD4 (Red)
 
 
-buttons_t buttons_get() {
-    // TODO - Figure out which pins on the test board can have buttons.
-    // TODO - try to make them adjacent in a port.  They need to support
-    // TODO - pin change interrupt, although we might not be using that yet.
-    // uint8_t buttons = BUTTONS_PORT & BUTTONS_MASK >> BUTTONS_SHIFT;
-
-    return BUTTONS_NONE;
-}
 
 void buttons_init() {
     BUTTONS_DDR &= ~(_BV(PD4) | _BV(PD3) | _BV(PD2));
@@ -76,18 +77,8 @@ void buttons_init() {
 
 ISR(PCINT2_vect)
 {
-    uint8_t btn = (~BUTTONS_PIN & BUTTONS_MASK) >> BUTTONS_SHIFT;;
-
-    /* last_button only gets updated if one button was pressed. */
-    switch (btn) {
-        case BUTTONS_GREEN:
-        case BUTTONS_YELLOW:
-        case BUTTONS_RED:
-            last_button = btn;
-            break;
-        default:
-            last_button = 0;
-    }
+    buttons = (~BUTTONS_PIN & BUTTONS_MASK) >> BUTTONS_SHIFT;;
+    printf("%2x\n", buttons);
 }
 
 /* Call all the component init functions. */
@@ -99,77 +90,97 @@ static void init(void)
     // spi_init();
     // sdcard_init();
     twi_master_init();
-
+    ftseg_init(&ftseg);
     buttons_init();
     // wdt_enable(WDTO_2S);
     sei();
 }
+
+void format_text(char *text, dht22_measurement_t *meas, uint8_t buttons);
+
+fsm_t next();
 
 /* Micocontroller firmware entry point */
 int main(void) __attribute__((OS_main));
 int main(void)
 {
   
-    init();
-
     printf("\n** Alive!! **\n");
-    ftseg_init(&ftseg);
 
     /* Main application loop! */
     while (1) {
-
-        // Any event messages pending?  Dequeue and process.
-        // TODO later - just start with polling!
-        // switch (event_msg) {
-        // case BUTTON_DOWN:
-
-        // case BUTTON_UP:
-        // case STARTUP:
-        // default:
-        // }
-        // if (!buttons_pending) {
-
-        // }
-
-        // buttons_get is a simple debouncer that reads all three buttons
-        // and returns an button_t.  It is responsible for handling
-        // priority (which should go left-to-right across the device)
-        // This function should block until the pin change interrupt fires.
-        // Maybe go to sleep if we can to save battery?
-        uint8_t btns = buttons_get();
-        btns = 0x1;
-        // find first set bit
-        // We don't need this until the read is complete!  It's only for display.
-
-        /* If no button is pressed, just go back up. Or sleep? */
-        if (!btns) { continue; };
-
-        /* Take an environmental reading. */
-        dht22_measurement_t meas;
-        dht22_read(&meas);
-        // dht22_print(&meas);
-        
-        
-        // ht16k33_display_off(ht16k33, 0);
-        char text[5];
-        switch (last_button) {
-            case BUTTONS_GREEN:
-                sprintf(text, "C%02d%d", meas.t_integral, meas.t_decimal);
-                break;
-            case BUTTONS_YELLOW:
-                sprintf(text, "RH%02d", meas.rh_integral);
-                break;
-            case BUTTONS_RED:
-                dht22_c_to_f(&meas);
-                sprintf(text, "F%02d%d", meas.t_integral, meas.t_decimal);
-                break;
-            default:
-                memset(text, 0, sizeof(text));
-        }
-        ftseg_write_text(ftseg, 0, text);
-        
+        next();
+                
         _delay_ms(DELAY_LOOP);
     }
    
 }
 
+
+
+/* Advance state machine. */
+fsm_t next() {
+    static uint8_t last_buttons;
+    static char text[5];
+    static dht22_measurement_t meas;
+    
+    fsm_t last = fsm;
+
+    switch (fsm) {
+    case RESET:
+        init();
+        fsm = IDLE;
+        break;
+    /* IDLE: no active buttons */
+    case IDLE:
+        if ((last_buttons = buttons)) {
+            fsm = READ_DHT22;
+        }
+        break;
+    case READ_DHT22:
+        dht22_read(&meas);
+        fsm = FORMAT_TEXT;
+        break;
+    case FORMAT_TEXT:
+        format_text(text, &meas, last_buttons);
+        fsm = WRITE_FTSEG;
+        break;
+    case WRITE_FTSEG:
+        ftseg_write_text(ftseg, 0, text);
+        fsm = WAIT_NOBUTTONS;
+        break;
+    case WAIT_NOBUTTONS:
+        if (!buttons) {
+            fsm = IDLE;
+        }
+        break;
+    default:
+        fsm = RESET;
+    }
+    if (last != fsm) {
+        printf("FSM: %d->%d\n", last, fsm);
+    }
+    return fsm;
+}
+
+void format_text(char *text, dht22_measurement_t *meas, uint8_t buttons) {
+
+    /* If only one button was pushed, write the corresponding string
+     * to the buffer.
+     */
+    switch (buttons) {
+    case BUTTONS_GREEN:
+        sprintf(text, "C%02d%d", meas->t_integral, meas->t_decimal);
+        break;
+    case BUTTONS_YELLOW:
+        sprintf(text, "RH%02d", meas->rh_integral);
+        break;
+    case BUTTONS_RED:
+        dht22_c_to_f(meas);
+        sprintf(text, "F%02d%d", meas->t_integral, meas->t_decimal);
+        break;
+    default:
+        memset(text, 0, 5);
+    }
+    printf("TEXT: %s\n", text);
+}

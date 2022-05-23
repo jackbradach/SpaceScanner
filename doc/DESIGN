@@ -1,5 +1,11 @@
 Space Scanner
 -------------
+2022/05/22:
+- Refactor to remove passing of device handles.  Instead each module becomes a singleton, with
+state data contained within.  This'll make function calls nicer at the expense of only supporting
+one device of each type.  That's fine for this project.  No rush, but new functions will be in
+this pattern, old ones will get converted as I feel like it.
+
 
 2022/05/11:
 - This is the project.  Stop looking for the esp32 version.  We decided it'd
