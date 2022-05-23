@@ -1,4 +1,3 @@
-#include <stdio.h>
 
 #ifndef _TWI_MASTER_H_
 #define _TWI_MASTER_H_
@@ -6,7 +5,9 @@
 #include <stdbool.h>
 #include <util/twi.h>
 
-#define TWI_FREQ 100000
+#include "config.h"
+
+#define TWI_FREQ CONFIG_TWI_FREQ
 
 inline void twi_master_init(void)
 {

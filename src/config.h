@@ -27,6 +27,10 @@
 //#define CONFIG_DBG_UART_BIT  PD6
 //#define CONFIG_DBG_UART_BAUD 115200
 
+/* TWI (I2C) configuration */
+#define CONFIG_TWI_FREQ 400000
+
+
 #define CONFIG_SPI_PORT PORTB
 #define CONFIG_SPI_DDR DDRB
 #define CONFIG_SPI_MISO PB4
