@@ -38,13 +38,17 @@ buttons_t buttons_get();
 uint8_t buttons;
 
 ftseg_device_handle_t *ftseg;
+ht16k33_device_handle_t *ht16k33;
+uint32_t ticks;
 
 typedef enum {
     RESET = 0,
     IDLE,
+    FADE_DOWN_FTSEG,
     READ_DHT22,
     FORMAT_TEXT,
     WRITE_FTSEG,
+    FADE_UP_FTSEG,
     WAIT_NOBUTTONS,
 } fsm_t;
 
@@ -54,7 +58,8 @@ fsm_t fsm = RESET;
 
 // };
 
-#define DELAY_LOOP 10
+#define MS_PER_TICK 16
+#define FTSEG_FADE_PERIOD_MS 20UL
 #define BUTTONS_PORT PORTD
 #define BUTTONS_PIN PIND
 #define BUTTONS_DDR DDRD
@@ -65,7 +70,9 @@ fsm_t fsm = RESET;
 // PCINT19 -> PD3 (Yellow)
 // PCINT20 -> PD4 (Red)
 
-
+inline uint32_t ticks_to_ms() {
+    return ticks * MS_PER_TICK;
+}
 
 void buttons_init() {
     BUTTONS_DDR &= ~(_BV(PD4) | _BV(PD3) | _BV(PD2));
@@ -75,10 +82,13 @@ void buttons_init() {
     PCICR |= _BV(PCIE2);
 }
 
-ISR(PCINT2_vect)
-{
+/* We're using the WDT as a sloppy timer. */
+ISR(WDT_vect) {
+    ticks++;
+}
+
+ISR(PCINT2_vect) {
     buttons = (~BUTTONS_PIN & BUTTONS_MASK) >> BUTTONS_SHIFT;;
-    printf("%2x\n", buttons);
 }
 
 /* Call all the component init functions. */
@@ -91,8 +101,13 @@ static void init(void)
     // sdcard_init();
     twi_master_init();
     ftseg_init(&ftseg);
+    ht16k33 = ftseg->ht16k33;
     buttons_init();
-    // wdt_enable(WDTO_2S);
+
+    /* Set up the WDT as a sloppy tick source */
+    ticks = 0;
+    WDTCSR = _BV(WDIE);
+    
     sei();
 }
 
@@ -104,14 +119,14 @@ fsm_t next();
 int main(void) __attribute__((OS_main));
 int main(void)
 {
-  
+    init();
+
     printf("\n** Alive!! **\n");
 
+    ht16k33_set_brightness(ht16k33, 0, 1);
     /* Main application loop! */
     while (1) {
         next();
-                
-        _delay_ms(DELAY_LOOP);
     }
    
 }
@@ -123,17 +138,35 @@ fsm_t next() {
     static uint8_t last_buttons;
     static char text[5];
     static dht22_measurement_t meas;
-    
+    static int8_t ftseg_brightness;
+    static uint32_t t_start;
+
     fsm_t last = fsm;
 
     switch (fsm) {
     case RESET:
-        init();
+        t_start = 0;
+        ftseg_brightness = 0;
         fsm = IDLE;
         break;
     /* IDLE: no active buttons */
     case IDLE:
         if ((last_buttons = buttons)) {
+            t_start = ticks_to_ms();
+            fsm = FADE_DOWN_FTSEG;
+        }
+        break;
+
+    /* Fade down any existing measurement. */
+    case FADE_DOWN_FTSEG:
+        if (ftseg_brightness > 0) {
+            if (ticks_to_ms() - t_start > FTSEG_FADE_PERIOD_MS) {
+                ftseg_brightness--;
+                ht16k33_set_brightness(ht16k33, 0, ftseg_brightness);
+                t_start = ticks_to_ms();
+            }
+        } else {
+            ht16k33_display_off(ht16k33, 0);
             fsm = READ_DHT22;
         }
         break;
@@ -145,10 +178,30 @@ fsm_t next() {
         format_text(text, &meas, last_buttons);
         fsm = WRITE_FTSEG;
         break;
+
     case WRITE_FTSEG:
         ftseg_write_text(ftseg, 0, text);
-        fsm = WAIT_NOBUTTONS;
+        ht16k33_display_on(ht16k33, 0);
+        fsm = FADE_UP_FTSEG;
         break;
+
+    /* Fade up with the new measurement. */
+    case FADE_UP_FTSEG:
+        if (ftseg_brightness <= 16) {
+            printf("%ld %ld %ld %ld\n", t_start, ticks_to_ms(), ticks_to_ms() - t_start, FTSEG_FADE_PERIOD_MS);
+
+            if ((ticks_to_ms() - t_start) > FTSEG_FADE_PERIOD_MS) {
+                printf("brightness: %d\n", ftseg_brightness);
+
+                ftseg_brightness++;
+                ht16k33_set_brightness(ht16k33, 0, ftseg_brightness);
+                t_start = ticks_to_ms();
+            }
+        } else {
+            fsm = WAIT_NOBUTTONS;
+        }
+        break;
+
     case WAIT_NOBUTTONS:
         if (!buttons) {
             fsm = IDLE;
