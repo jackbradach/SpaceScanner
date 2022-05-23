@@ -45,6 +45,7 @@ typedef enum {
     RESET = 0,
     IDLE,
     FADE_DOWN_FTSEG,
+    SCANNING,
     READ_DHT22,
     FORMAT_TEXT,
     WRITE_FTSEG,
@@ -59,7 +60,8 @@ fsm_t fsm = RESET;
 // };
 
 #define MS_PER_TICK 16
-#define FTSEG_FADE_PERIOD_MS 20UL
+#define FTSEG_FADE_PERIOD_MS 10UL
+#define FTSEG_SPINNER_PERIOD_MS 50UL
 #define BUTTONS_PORT PORTD
 #define BUTTONS_PIN PIND
 #define BUTTONS_DDR DDRD
@@ -132,6 +134,9 @@ int main(void)
 }
 
 
+uint16_t ftseg_spinner(uint8_t idx) {
+    return 1 << (idx % 15);
+}
 
 /* Advance state machine. */
 fsm_t next() {
@@ -140,6 +145,7 @@ fsm_t next() {
     static dht22_measurement_t meas;
     static int8_t ftseg_brightness;
     static uint32_t t_start;
+    static uint8_t idx;
 
     fsm_t last = fsm;
 
@@ -166,10 +172,37 @@ fsm_t next() {
                 t_start = ticks_to_ms();
             }
         } else {
-            ht16k33_display_off(ht16k33, 0);
+            // ftseg_write_text(ftseg, 0, "");
+            ht16k33_clear(ht16k33, 0);
+            ht16k33_update(ht16k33, 0);
+            t_start = ticks_to_ms();
+            fsm = SCANNING;
+        }
+        break;
+
+    // Cool effect ideas:
+    // 1. first scan-up sets all the segments without clearing.
+    // 2. after all are set, start clearing one bit.
+    // 3. maybe have them out of sync?
+    case SCANNING:
+        if ((ticks_to_ms() - t_start) > FTSEG_SPINNER_PERIOD_MS) {
+            printf("idx: %d  %x\n", idx, ftseg_spinner(idx));
+            ht16k33_clear(ht16k33, 0);
+            for (uint8_t i = 0; i < HT16K33_DIGITS_PER_DEV; i++) {
+                ht16k33_set_segments(ht16k33, 0, i, ftseg_spinner(idx + i));
+                ht16k33_update(ht16k33, 0);
+            }
+            ht16k33_set_brightness(ht16k33, 0, (idx % 16) + 1);
+            idx++;
+            t_start = ticks_to_ms();
+        }
+        
+        if (!buttons) {
             fsm = READ_DHT22;
         }
         break;
+
+
     case READ_DHT22:
         dht22_read(&meas);
         fsm = FORMAT_TEXT;
@@ -181,18 +214,13 @@ fsm_t next() {
 
     case WRITE_FTSEG:
         ftseg_write_text(ftseg, 0, text);
-        ht16k33_display_on(ht16k33, 0);
         fsm = FADE_UP_FTSEG;
         break;
 
     /* Fade up with the new measurement. */
     case FADE_UP_FTSEG:
         if (ftseg_brightness <= 16) {
-            printf("%ld %ld %ld %ld\n", t_start, ticks_to_ms(), ticks_to_ms() - t_start, FTSEG_FADE_PERIOD_MS);
-
             if ((ticks_to_ms() - t_start) > FTSEG_FADE_PERIOD_MS) {
-                printf("brightness: %d\n", ftseg_brightness);
-
                 ftseg_brightness++;
                 ht16k33_set_brightness(ht16k33, 0, ftseg_brightness);
                 t_start = ticks_to_ms();
