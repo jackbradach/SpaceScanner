@@ -5,6 +5,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 #include <util/delay.h>
 
 #include "config.h"
@@ -125,17 +126,30 @@ int main(void)
 
     printf("\n** Alive!! **\n");
 
-    ht16k33_set_brightness(ht16k33, 0, 1);
+    ht16k33_set_brightness(ht16k33, 0, 16);
+    for (int i = 0; i < 20; i++) {
+        ht16k33_clear(ht16k33, 0);
+        for (int d = 0; d < 4; d++) {
+            uint16_t pat;
+            pat = ftseg_anim_scan_start(d, i);
+            ht16k33_set_segments(ht16k33, 0, d, pat);
+            ht16k33_update(ht16k33, 0);
+        }
+        _delay_ms(100);
+    }
+    
+
+    // 0x3FC0
+
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_enable();
+
     /* Main application loop! */
     while (1) {
         next();
+        sleep_cpu();
     }
    
-}
-
-
-uint16_t ftseg_spinner(uint8_t idx) {
-    return 1 << (idx % 15);
 }
 
 /* Advance state machine. */
@@ -184,6 +198,21 @@ fsm_t next() {
     // 1. first scan-up sets all the segments without clearing.
     // 2. after all are set, start clearing one bit.
     // 3. maybe have them out of sync?
+    // SCANNING_START
+    // - if !buttons, go to scan fail.
+    // SCANNING_ACTIVE
+    // - Does scanning animations
+    // - Need some way to indicate it's "long enough"
+    // - Maybe the outer rings start to light up (at random) to "lock"
+    // - Once all four are locked, they start to blink and releasing button will go to success.
+    // SCANNING_SUCCESS
+    // - Do read and display result.
+    // SCANNING_FAIL
+    // - Flash [X] and fade out.
+    // - Time out after a couple seconds (fade out)
+    // - If button is pressed, jump back to scanning start.
+
+
     case SCANNING:
         if ((ticks_to_ms() - t_start) > FTSEG_SPINNER_PERIOD_MS) {
             printf("idx: %d  %x\n", idx, ftseg_spinner(idx));
@@ -263,5 +292,4 @@ void format_text(char *text, dht22_measurement_t *meas, uint8_t buttons) {
     default:
         memset(text, 0, 5);
     }
-    printf("TEXT: %s\n", text);
 }
