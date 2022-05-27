@@ -36,6 +36,12 @@ typedef enum {
     FTSEG_ANIM_SCAN_ACTIVE,
 } ftseg_anim_t;
 
+typedef struct {
+    ftseg_anim_t which;
+    
+
+} ftseg_anim_state_t;
+
 uint16_t ftseg_anim_scan_start(uint8_t digit, uint8_t idx);
 
 // Returns pattern vector of pattern at index.
@@ -59,7 +65,7 @@ uint16_t ftseg_anim_scan_start(uint8_t digit, uint8_t idx) {
     } else {
         v = pgm_read_word(&ftseg_data_scan_start[9]);
     }
-    printf("v: %04x\n", v);
+    // printf("v:  %04x\n", v);
     return v;
 }
 
