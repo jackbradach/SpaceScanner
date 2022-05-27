@@ -17,6 +17,7 @@ static inline bool dht22_data() {
     return !!(DHT22_PIN & _BV(DHT22_BIT));
 }
 
+// TODO - make this share a timer with sound?
 void dht22_init() {
     /* Set pin to input */
     DHT22_PORT |= _BV(DHT22_BIT);

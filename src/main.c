@@ -99,8 +99,10 @@ static void init(void)
 {
     dbg_init();
     uart_init();
+    // dac_init();
+
     dht22_init();
-    // spi_init();
+    // spi_init();d
     // sdcard_init();
     twi_master_init();
     ftseg_init(&ftseg);
@@ -110,8 +112,10 @@ static void init(void)
     /* Set up the WDT as a sloppy tick source */
     ticks = 0;
     WDTCSR = _BV(WDIE);
+    // WDTCSR = 0;
     
     sei();
+
 }
 
 void format_text(char *text, dht22_measurement_t *meas, uint8_t buttons);
@@ -127,7 +131,7 @@ int main(void)
     printf("\n** Alive!! **\n");
 
     ht16k33_set_brightness(ht16k33, 0, 16);
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 10; i++) {
         ht16k33_clear(ht16k33, 0);
         for (int d = 0; d < 4; d++) {
             uint16_t pat;
@@ -141,13 +145,13 @@ int main(void)
 
     // 0x3FC0
 
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    sleep_enable();
+    // set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    // sleep_enable();
 
     /* Main application loop! */
     while (1) {
         next();
-        sleep_cpu();
+        // sleep_cpu();
     }
    
 }
@@ -215,7 +219,7 @@ fsm_t next() {
 
     case SCANNING:
         if ((ticks_to_ms() - t_start) > FTSEG_SPINNER_PERIOD_MS) {
-            printf("idx: %d  %x\n", idx, ftseg_spinner(idx));
+            // printf("idx: %d  %x\n", idx, ftseg_spinner(idx));
             ht16k33_clear(ht16k33, 0);
             for (uint8_t i = 0; i < HT16K33_DIGITS_PER_DEV; i++) {
                 ht16k33_set_segments(ht16k33, 0, i, ftseg_spinner(idx + i));

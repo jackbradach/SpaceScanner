@@ -22,11 +22,11 @@ typedef struct ftseg_device_handle_s {
 
 // } anim_seq_t;
 
-// typedef enum {
-//     ANIM_FLAG_REVERSE = 0b001,    // Runs sequence in opposite direction
-//     ANIM_FLAG_SEQUENTIAL = 0b010, // Changes characters one at a time
-//     ANIM_FLAG_ADD_BLANK = 0b100,  // Adds a blank frame to the end
-// } anim_flags_t;
+typedef enum {
+    ANIM_FLAG_REVERSE = 0b001,    // Runs sequence in opposite direction
+    ANIM_FLAG_SEQUENTIAL = 0b010, // Changes characters one at a time
+    ANIM_FLAG_ADD_BLANK = 0b100,  // Adds a blank frame to the end
+} anim_flags_t;
 
 // struct ftseg_anim {
 //     anim_seq_t anim_seq;
