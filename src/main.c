@@ -100,21 +100,22 @@ static void init(void)
     dbg_init();
     uart_init();
     // dac_init();
-
-    dht22_init();
     // spi_init();d
     // sdcard_init();
     twi_master_init();
-    ftseg_init(&ftseg);
-    ht16k33 = ftseg->ht16k33;
     buttons_init();
 
     /* Set up the WDT as a sloppy tick source */
     ticks = 0;
     WDTCSR = _BV(WDIE);
-    // WDTCSR = 0;
-    
+
+    /* Inits past this point require interrupts. */
     sei();
+
+    ftseg_init(&ftseg);
+    ht16k33 = ftseg->ht16k33;
+    dht22_init();
+ 
 
 }
 

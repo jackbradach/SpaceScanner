@@ -35,7 +35,7 @@
 
 /* TWI (I2C) configuration */
 #define CONFIG_TWI_FREQ 400000
-
+#define CONFIG_TWI_BUFSZ 32
 
 #define CONFIG_SPI_PORT PORTB
 #define CONFIG_SPI_DDR DDRB
