@@ -9,17 +9,9 @@
 
 #define TWI_FREQ CONFIG_TWI_FREQ
 
-inline void twi_master_init(void)
-{
-    /* No prescaling. */
-    TWSR = 0;
+void twi_master_init(void);
 
-    /* Set desired bus frequence based on clock. */
-    TWBR = (F_CPU / (2 * TWI_FREQ)) - 8;
 
-    /* Enable the TWI interface */
-    TWCR = _BV(TWEN) | _BV(TWINT);
-}
 
 /* Block until TWINT is set and then clear it. */
 inline void twi_block_on_twint(void)
@@ -40,10 +32,6 @@ inline void twi_stop(void)
     while (TWCR & _BV(TWSTO));
 }
 
-inline void twi_ack_int(void)
-{
-    TWCR |= (_BV(TWINT) | _BV(TWEN) | _BV(TWINT));
-}
 
 
 
