@@ -94,11 +94,31 @@ ISR(PCINT2_vect) {
     buttons = (~BUTTONS_PIN & BUTTONS_MASK) >> BUTTONS_SHIFT;;
 }
 
+// bool prng_init = false;
+
+void prng_init() {
+
+    uint16_t seed = 0;
+    DDRC = 0;
+    ADMUX = _BV(REFS1) | _BV(REFS0) | _BV(MUX3);
+    ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);
+
+    for (int i = 0; i < 16; i++) {
+        ADCSRA |= _BV(ADSC);
+        while(ADCSRA & _BV(ADSC));
+        seed |= (ADC & 0x1) << i;
+        _delay_ms(1);
+    }
+    srand(seed);
+    ADCSRA = 0;
+}
+
 /* Call all the component init functions. */
 static void init(void)
 {
     dbg_init();
     uart_init();
+    prng_init();
     // dac_init();
     // spi_init();d
     // sdcard_init();
@@ -112,12 +132,16 @@ static void init(void)
     /* Inits past this point require interrupts. */
     sei();
 
+    // do ADC read
+
+
     ftseg_init(&ftseg);
     ht16k33 = ftseg->ht16k33;
     dht22_init();
  
 
 }
+
 
 void format_text(char *text, dht22_measurement_t *meas, uint8_t buttons);
 
@@ -132,17 +156,33 @@ int main(void)
     printf("\n** Alive!! **\n");
 
     ht16k33_set_brightness(ht16k33, 0, 16);
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 20; i++) {
         ht16k33_clear(ht16k33, 0);
         for (int d = 0; d < 4; d++) {
             uint16_t pat;
-            pat = ftseg_anim_scan_start(d, i);
+            uint8_t idx;
+            if (i - 2 * d > 0) {
+                idx = i - 2 * d;
+            } else {
+                idx = 0;
+            }
+            pat = ftseg_anim(FTSEG_ANIM_SCAN_START, d, i - 2*d);
             ht16k33_set_segments(ht16k33, 0, d, pat);
             ht16k33_update(ht16k33, 0);
         }
-        _delay_ms(100);
+        _delay_ms(500);
     }
-    
+
+    for (uint8_t idx = 0; ; idx++) {
+        ht16k33_clear(ht16k33, 0);
+        for (int d = 0; d < 4; d++) {
+            uint16_t pat;
+            pat = ftseg_anim(FTSEG_ANIM_SCAN_ACTIVE, d, idx + 2 * d);
+            ht16k33_set_segments(ht16k33, 0, d, pat);
+            ht16k33_update(ht16k33, 0);
+        }
+        _delay_ms(50);
+    }
 
     // 0x3FC0
 

@@ -30,11 +30,6 @@ static uint8_t popcnt8(uint8_t v) {
 // Need to keep animation state.
 // Need to track clean/dirty.  Every write causes a flicker.
 
-typedef enum {
-    FTSEG_ANIM_NONE = 0,
-    FTSEG_ANIM_SCAN_START,
-    FTSEG_ANIM_SCAN_ACTIVE,
-} ftseg_anim_t;
 
 typedef struct {
     ftseg_anim_t which;
@@ -43,6 +38,7 @@ typedef struct {
 } ftseg_anim_state_t;
 
 uint16_t ftseg_anim_scan_start(uint8_t digit, uint8_t idx);
+uint16_t ftseg_anim_scan_active(uint8_t digit, uint8_t idx);
 
 // Returns pattern vector of pattern at index.
 uint16_t ftseg_anim(int which, uint8_t digit, uint8_t idx) {
@@ -51,13 +47,20 @@ uint16_t ftseg_anim(int which, uint8_t digit, uint8_t idx) {
     case FTSEG_ANIM_SCAN_START:
         pattern = ftseg_anim_scan_start(digit, idx);
         break;
+    case FTSEG_ANIM_SCAN_ACTIVE:
+        pattern = ftseg_anim_scan_active(digit, idx);
+
+        break;
+
+    case FTSEG_ANIM_SCAN_SUCCESS:
+        break;
     default:
         pattern = 0;
     }
     return pattern;
 }
 
-#define ANIM_SCAN_START_FRAMES 10
+#define ANIM_SCAN_START_FRAMES (sizeof(ftseg_data_scan_start) / sizeof(uint16_t))
 uint16_t ftseg_anim_scan_start(uint8_t digit, uint8_t idx) {
     uint16_t v;
     if (idx < ANIM_SCAN_START_FRAMES) {
@@ -65,15 +68,14 @@ uint16_t ftseg_anim_scan_start(uint8_t digit, uint8_t idx) {
     } else {
         v = pgm_read_word(&ftseg_data_scan_start[9]);
     }
-    // printf("v:  %04x\n", v);
     return v;
 }
 
+#define ANIM_SCAN_ACTIVE_FRAMES (sizeof(ftseg_data_scan_active) / sizeof(uint16_t))
 uint16_t ftseg_anim_scan_active(uint8_t digit, uint8_t idx) {
-    // draw inverted starburst in middle of all digits.
-    // Each digit should have random offset from others.
-    // Outer ring "lock" is handled elsewhere.
-    // if (idx < )
+    uint16_t v;
+    v = pgm_read_word(&ftseg_data_scan_active[idx % ANIM_SCAN_ACTIVE_FRAMES]);
+    return v;
 }
 
 uint16_t ftseg_anim_scan_success(uint8_t digit, uint8_t idx) {

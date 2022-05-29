@@ -127,8 +127,6 @@ int twi_master_read(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len)
     return len;
 }
 
-
-
 ISR(TWI_vect)
 {
     static uint8_t idx;

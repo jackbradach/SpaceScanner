@@ -28,6 +28,14 @@ typedef enum {
     ANIM_FLAG_ADD_BLANK = 0b100,  // Adds a blank frame to the end
 } anim_flags_t;
 
+typedef enum {
+    FTSEG_ANIM_NONE = 0,
+    FTSEG_ANIM_SCAN_START,
+    FTSEG_ANIM_SCAN_ACTIVE,
+    FTSEG_ANIM_SCAN_SUCCESS,
+} ftseg_anim_t;
+
+
 // struct ftseg_anim {
 //     anim_seq_t anim_seq;
 //     uint32_t frame_delay;

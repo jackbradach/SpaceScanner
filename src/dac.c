@@ -21,7 +21,7 @@ static uint8_t audio_data;
 extern const uint8_t sinewave[SINE_LENGTH];
 
 
-uint8_t sine_idx;
+volatile uint8_t sine_idx;
 
 const uint16_t A4_FREQ = 440;
 #define TIMER1_PRESCALER 8
