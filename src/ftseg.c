@@ -68,7 +68,7 @@ void ftseg_anim_start(ftseg_anim_t which, uint16_t period_ms) {
     }
     state.t_start = get_ticks_ms();
     state.period_ms = period_ms;
-    state.brightness = 16;
+    state.brightness = 0xF;
     memset(state.pattern, 0, 4 * sizeof(uint16_t));
     state.done = 0;
 }
@@ -106,7 +106,7 @@ void ftseg_anim_update() {
 
 void ftseg_anim_scan_start(void) {
     if (state.idx[0] == IDX_UNSET) {
-       state.brightness = 16;
+       state.brightness = 0xF;
        for (int d = 0; d < HT16K33_DIGITS_PER_DEV; d++) {
            state.idx[d] = 0;
        }
@@ -149,7 +149,7 @@ void ftseg_anim_scan_start(void) {
 #define ANIM_SCAN_ACTIVE_FRAMES (sizeof(ftseg_data_scan_active) / sizeof(uint16_t))
 void ftseg_anim_scan_active(void) {
     if (state.idx[0] == IDX_UNSET) {
-       state.brightness = 16;
+       state.brightness = 0xF;
        for (int d = 0; d < HT16K33_DIGITS_PER_DEV; d++) {
            state.idx[d] = 2 * d;
        }
