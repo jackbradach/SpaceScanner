@@ -1,3 +1,22 @@
+
+    // Cool effect ideas:
+    // 1. first scan-up sets all the segments without clearing.
+    // 2. after all are set, start clearing one bit.
+    // 3. maybe have them out of sync?
+    // SCANNING_START
+    // - if !buttons, go to scan fail.
+    // SCANNING_ACTIVE
+    // - Does scanning animations
+    // - Need some way to indicate it's "long enough"
+    // - Maybe the outer rings start to light up (at random) to "lock"
+    // - Once all four are locked, they start to blink and releasing button will go to success.
+    // SCANNING_SUCCESS
+    // - Do read and display result.
+    // SCANNING_FAIL
+    // - Flash [X] and fade out.
+    // - Time out after a couple seconds (fade out)
+    // - If button is pressed, jump back to scanning start.
+
 static const uint16_t PROGMEM ftseg_data_scan_start[] = {
     0x0008, 0x0014, 0x0222, 0x0001, 0x0200, 0x1000, 0x3800, 0x38C0, 0x3DC0, 0x3FC0
 };

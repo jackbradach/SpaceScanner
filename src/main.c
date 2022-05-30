@@ -146,19 +146,19 @@ int main(void)
     init();
     
     printf("\n** Alive!! **\n");
-    while (1) {
-        /* Start scan*/
-        ftseg_anim_start(FTSEG_ANIM_SCAN_START, 60);
-        while (!ftseg_anim_is_done()) {
-            ftseg_anim_update();
-        }
-        /* Active scan */
-        ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 60);
-        while (!ftseg_anim_is_done()) {
-            ftseg_anim_update();
-        }
-        _delay_ms(2000);
-    }
+    // while (1) {
+    //     /* Start scan*/
+    //     ftseg_anim_start(FTSEG_ANIM_SCAN_START, 60);
+    //     while (!ftseg_anim_is_done()) {
+    //         ftseg_anim_update();
+    //     }
+    //     /* Active scan */
+    //     ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 60);
+    //     while (!ftseg_anim_is_done()) {
+    //         ftseg_anim_update();
+    //     }
+    //     _delay_ms(2000);
+    // }
 
 
     // ht16k33_set_brightness(ht16k33, 0, 16);
@@ -223,7 +223,7 @@ fsm_t next() {
     /* IDLE: no active buttons */
     case IDLE:
         if ((last_buttons = buttons)) {
-            t_start = ticks_to_ms();
+            t_start = get_ticks_ms();
             fsm = FADE_DOWN_FTSEG;
         }
         break;
@@ -231,59 +231,35 @@ fsm_t next() {
     /* Fade down any existing measurement. */
     case FADE_DOWN_FTSEG:
         if (ftseg_brightness > 0) {
-            if (ticks_to_ms() - t_start > FTSEG_FADE_PERIOD_MS) {
+            if (get_ticks_ms() - t_start > FTSEG_FADE_PERIOD_MS) {
                 ftseg_brightness--;
                 ht16k33_set_brightness(ht16k33, 0, ftseg_brightness);
-                t_start = ticks_to_ms();
+                t_start = get_ticks_ms();
             }
         } else {
             // ftseg_write_text(ftseg, 0, "");
             ht16k33_clear(ht16k33, 0);
             ht16k33_update(ht16k33, 0);
-            t_start = ticks_to_ms();
-            fsm = SCANNING;
+            ftseg_anim_start(FTSEG_ANIM_SCAN_START, 60);
+            fsm = SCANNING_START;
         }
         break;
 
-    case 
-
-    // Cool effect ideas:
-    // 1. first scan-up sets all the segments without clearing.
-    // 2. after all are set, start clearing one bit.
-    // 3. maybe have them out of sync?
-    // SCANNING_START
-    // - if !buttons, go to scan fail.
-    // SCANNING_ACTIVE
-    // - Does scanning animations
-    // - Need some way to indicate it's "long enough"
-    // - Maybe the outer rings start to light up (at random) to "lock"
-    // - Once all four are locked, they start to blink and releasing button will go to success.
-    // SCANNING_SUCCESS
-    // - Do read and display result.
-    // SCANNING_FAIL
-    // - Flash [X] and fade out.
-    // - Time out after a couple seconds (fade out)
-    // - If button is pressed, jump back to scanning start.
-
-
-    case SCANNING:
-        if ((ticks_to_ms() - t_start) > FTSEG_SPINNER_PERIOD_MS) {
-            // printf("idx: %d  %x\n", idx, ftseg_spinner(idx));
-            ht16k33_clear(ht16k33, 0);
-            for (uint8_t i = 0; i < HT16K33_DIGITS_PER_DEV; i++) {
-                ht16k33_set_segments(ht16k33, 0, i, ftseg_spinner(idx + i));
-                ht16k33_update(ht16k33, 0);
-            }
-            ht16k33_set_brightness(ht16k33, 0, (idx % 16) + 1);
-            idx++;
-            t_start = ticks_to_ms();
+    case SCANNING_START:
+        if (ftseg_anim_is_done()) {
+            ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 60);
+            fsm = SCANNING_ACTIVE;
+        } else {
+            ftseg_anim_update();
         }
-        
+        break;
+
+    case SCANNING_ACTIVE:
+        ftseg_anim_update();
         if (!buttons) {
             fsm = READ_DHT22;
         }
         break;
-
 
     case READ_DHT22:
         dht22_read(&meas);
@@ -302,10 +278,10 @@ fsm_t next() {
     /* Fade up with the new measurement. */
     case FADE_UP_FTSEG:
         if (ftseg_brightness <= 16) {
-            if ((ticks_to_ms() - t_start) > FTSEG_FADE_PERIOD_MS) {
+            if ((get_ticks_ms() - t_start) > FTSEG_FADE_PERIOD_MS) {
                 ftseg_brightness++;
                 ht16k33_set_brightness(ht16k33, 0, ftseg_brightness);
-                t_start = ticks_to_ms();
+                t_start = get_ticks_ms();
             }
         } else {
             fsm = WAIT_NOBUTTONS;
