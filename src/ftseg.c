@@ -38,12 +38,13 @@ typedef struct {
     ftseg_anim_t anim;
     uint32_t t_start;
     uint16_t period_ms;
-    volatile uint8_t idx[HT16K33_DIGITS_PER_DEV];
+    volatile int8_t idx[HT16K33_DIGITS_PER_DEV];
     uint16_t pattern[HT16K33_DIGITS_PER_DEV];
     uint8_t brightness;
     uint8_t done;
 } ftseg_anim_state_t;
 
+#define IDX_UNSET -127
 
 static ftseg_anim_state_t state = { 0 };
 
@@ -62,14 +63,14 @@ bool ftseg_anim_is_done(void) {
 /* Call to set the current animation. */
 void ftseg_anim_start(ftseg_anim_t which, uint16_t period_ms) {
     state.anim = which;
-    for (int i = 0; i < 4; i++) {
-        state.idx[i] = 0;
+    for (int i = 0; i < HT16K33_DIGITS_PER_DEV; i++) {
+        state.idx[i] = IDX_UNSET;
     }
     state.t_start = get_ticks_ms();
     state.period_ms = period_ms;
     state.brightness = 16;
     memset(state.pattern, 0, 4 * sizeof(uint16_t));
-    state.done = false;
+    state.done = 0;
 }
 
 void ftseg_anim_update() {
@@ -86,7 +87,6 @@ void ftseg_anim_update() {
         break;
     case FTSEG_ANIM_SCAN_ACTIVE:
         ftseg_anim_scan_active();
-
         break;
 
     case FTSEG_ANIM_SCAN_SUCCESS:
@@ -105,14 +105,18 @@ void ftseg_anim_update() {
 }
 
 void ftseg_anim_scan_start(void) {
-    if (state.idx[0] == 0) {
+    if (state.idx[0] == IDX_UNSET) {
        state.brightness = 16;
+       for (int d = 0; d < HT16K33_DIGITS_PER_DEV; d++) {
+           state.idx[d] = 0;
+       }
     }
 
     /* The offsets here look neat, kind of a galloping in from the left. */
-    for (int d = 0; d < 4; d++) {
+    for (int d = 0; d < HT16K33_DIGITS_PER_DEV; d++) {
         uint8_t idx;
 
+        // printf("d: %d  idx[d]: %d  done: %02x\n", d, state.idx[d], state.done);
         if (state.done & _BV(d)) {
             continue;
         }
@@ -130,6 +134,7 @@ void ftseg_anim_scan_start(void) {
         
         state.pattern[d] = pgm_read_word(&ftseg_data_scan_start[idx]);
         state.idx[d]++;
+        // printf("---\n");
     }
 }
 
@@ -143,12 +148,25 @@ void ftseg_anim_scan_start(void) {
 
 #define ANIM_SCAN_ACTIVE_FRAMES (sizeof(ftseg_data_scan_active) / sizeof(uint16_t))
 void ftseg_anim_scan_active(void) {
-    // uint16_t v;
-    // if (state.idx == 0) {
-    //     ht16k33_set_brightness(ht16k33, 0, 16);
-    // }
-    // v = pgm_read_word(&ftseg_data_scan_active[state.idx % ANIM_SCAN_ACTIVE_FRAMES]);
-    // return v;
+    if (state.idx[0] == IDX_UNSET) {
+       state.brightness = 16;
+       for (int d = 0; d < HT16K33_DIGITS_PER_DEV; d++) {
+           state.idx[d] = 2 * d;
+       }
+    }
+
+    /* The offsets here look neat, kind of a galloping in from the left. */
+    for (int d = 0; d < 4; d++) {
+        uint8_t idx;
+        if (state.done & _BV(d)) {
+            continue;
+        }
+
+        state.pattern[d] = pgm_read_word(&ftseg_data_scan_active[state.idx[d]]);
+        state.idx[d] = ++state.idx[d] % ANIM_SCAN_ACTIVE_FRAMES;
+        // printf("d: %d  idx[d]: %d  done: %02x\n", d, state.idx[d], state.done);
+
+    }
 }
 
 uint16_t ftseg_anim_scan_success(uint8_t digit, uint8_t idx) {

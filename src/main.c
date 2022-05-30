@@ -45,6 +45,10 @@ typedef enum {
     RESET = 0,
     IDLE,
     FADE_DOWN_FTSEG,
+    SCANNING_START,
+    SCANNING_ACTIVE,
+    SCANNING_SUCCESS,
+    SCANNING_FAIL,
     SCANNING,
     READ_DHT22,
     FORMAT_TEXT,
@@ -148,12 +152,12 @@ int main(void)
         while (!ftseg_anim_is_done()) {
             ftseg_anim_update();
         }
-        _delay_ms(2000);
         /* Active scan */
-        // ftseg_anim_start(FTSEG_ANIM_SCAN_START, 100);
-        // while (!ftseg_is_done()) {
-        //     ftseg_anim_update();
-        // }
+        ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 60);
+        while (!ftseg_anim_is_done()) {
+            ftseg_anim_update();
+        }
+        _delay_ms(2000);
     }
 
 
@@ -240,6 +244,8 @@ fsm_t next() {
             fsm = SCANNING;
         }
         break;
+
+    case 
 
     // Cool effect ideas:
     // 1. first scan-up sets all the segments without clearing.
