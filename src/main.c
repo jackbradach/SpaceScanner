@@ -13,11 +13,12 @@
 #include "dbg.h"
 #include "dht22.h"
 #include "ftseg.h"
+#include "ht16k33.h"
 #include "neopixels.h"
 #include "spi.h"
 #include "uart.h"
 #include "twi_master.h"
-// #include "timer.h"
+#include "timer.h"
 #include <avr/wdt.h> 
 
 /* Application state; extend as needed! */
@@ -38,9 +39,7 @@ buttons_t buttons_get();
 
 uint8_t buttons;
 
-ftseg_device_handle_t *ftseg;
-ht16k33_device_handle_t *ht16k33;
-uint32_t ticks;
+extern ht16k33_device_handle_t *ht16k33;
 
 typedef enum {
     RESET = 0,
@@ -60,7 +59,6 @@ fsm_t fsm = RESET;
 
 // };
 
-#define MS_PER_TICK 16
 #define FTSEG_FADE_PERIOD_MS 10UL
 #define FTSEG_SPINNER_PERIOD_MS 50UL
 #define BUTTONS_PORT PORTD
@@ -73,9 +71,6 @@ fsm_t fsm = RESET;
 // PCINT19 -> PD3 (Yellow)
 // PCINT20 -> PD4 (Red)
 
-inline uint32_t ticks_to_ms() {
-    return ticks * MS_PER_TICK;
-}
 
 void buttons_init() {
     BUTTONS_DDR &= ~(_BV(PD4) | _BV(PD3) | _BV(PD2));
@@ -83,11 +78,6 @@ void buttons_init() {
 
     PCMSK2 |= _BV(PCINT20) | _BV(PCINT19) | _BV(PCINT18);
     PCICR |= _BV(PCIE2);
-}
-
-/* We're using the WDT as a sloppy timer. */
-ISR(WDT_vect) {
-    ticks++;
 }
 
 ISR(PCINT2_vect) {
@@ -117,6 +107,7 @@ void prng_init() {
 static void init(void)
 {
     dbg_init();
+    timer_init();
     uart_init();
     prng_init();
     // dac_init();
@@ -125,9 +116,7 @@ static void init(void)
     twi_master_init();
     buttons_init();
 
-    /* Set up the WDT as a sloppy tick source */
-    ticks = 0;
-    WDTCSR = _BV(WDIE);
+   
 
     /* Inits past this point require interrupts. */
     sei();
@@ -135,8 +124,7 @@ static void init(void)
     // do ADC read
 
 
-    ftseg_init(&ftseg);
-    ht16k33 = ftseg->ht16k33;
+    ftseg_init();
     dht22_init();
  
 
@@ -152,38 +140,52 @@ int main(void) __attribute__((OS_main));
 int main(void)
 {
     init();
-
+    
     printf("\n** Alive!! **\n");
-
-    ht16k33_set_brightness(ht16k33, 0, 16);
-    for (int i = 0; i < 20; i++) {
-        ht16k33_clear(ht16k33, 0);
-        for (int d = 0; d < 4; d++) {
-            uint16_t pat;
-            uint8_t idx;
-            if (i - 2 * d > 0) {
-                idx = i - 2 * d;
-            } else {
-                idx = 0;
-            }
-            pat = ftseg_anim(FTSEG_ANIM_SCAN_START, d, i - 2*d);
-            ht16k33_set_segments(ht16k33, 0, d, pat);
-            ht16k33_update(ht16k33, 0);
+    while (1) {
+        /* Start scan*/
+        ftseg_anim_start(FTSEG_ANIM_SCAN_START, 60);
+        while (!ftseg_anim_is_done()) {
+            ftseg_anim_update();
         }
-        _delay_ms(500);
+        _delay_ms(2000);
+        /* Active scan */
+        // ftseg_anim_start(FTSEG_ANIM_SCAN_START, 100);
+        // while (!ftseg_is_done()) {
+        //     ftseg_anim_update();
+        // }
     }
 
-    for (uint8_t idx = 0; ; idx++) {
-        ht16k33_clear(ht16k33, 0);
-        for (int d = 0; d < 4; d++) {
-            uint16_t pat;
-            pat = ftseg_anim(FTSEG_ANIM_SCAN_ACTIVE, d, idx + 2 * d);
-            ht16k33_set_segments(ht16k33, 0, d, pat);
-            ht16k33_update(ht16k33, 0);
-        }
-        _delay_ms(50);
-    }
 
+    // ht16k33_set_brightness(ht16k33, 0, 16);
+    // for (int i = 0; i < 20; i++) {
+    //     ht16k33_clear(ht16k33, 0);
+    //     for (int d = 0; d < 4; d++) {
+    //         uint16_t pat;
+    //         uint8_t idx;
+    //         if (i - 2 * d > 0) {
+    //             idx = i - 2 * d;
+    //         } else {
+    //             idx = 0;
+    //         }
+    //         pat = ftseg_anim(FTSEG_ANIM_SCAN_START, d, i - 2*d);
+    //         ht16k33_set_segments(ht16k33, 0, d, pat);
+    //         ht16k33_update(ht16k33, 0);
+    //     }
+    //     _delay_ms(60);
+    // }
+
+    // for (uint8_t idx = 0; idx < 100 ; idx++) {
+    //     ht16k33_clear(ht16k33, 0);
+    //     for (int d = 0; d < 4; d++) {
+    //         uint16_t pat;
+    //         pat = ftseg_anim(FTSEG_ANIM_SCAN_ACTIVE, d, idx + 2 * d);
+    //         ht16k33_set_segments(ht16k33, 0, d, pat);
+    //         ht16k33_update(ht16k33, 0);
+    //     }
+    //     _delay_ms(60);
+    // }
+    // }
     // 0x3FC0
 
     // set_sleep_mode(SLEEP_MODE_PWR_DOWN);
@@ -287,7 +289,7 @@ fsm_t next() {
         break;
 
     case WRITE_FTSEG:
-        ftseg_write_text(ftseg, 0, text);
+        ftseg_write_text(text);
         fsm = FADE_UP_FTSEG;
         break;
 
