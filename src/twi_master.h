@@ -40,6 +40,6 @@ uint8_t twi_recv(bool ack);
 void twi_master_mem_write(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len);
 void twi_master_write(uint8_t sla, uint8_t *data, uint8_t len);
 int twi_master_read(uint8_t sla, uint16_t addr, uint8_t *data, uint8_t len);
-
+void twi_block_until_done();
 
 #endif

@@ -30,6 +30,10 @@ static inline void twi_ack_int(void) {
     TWCR = (_BV(TWINT) | _BV(TWEN) | _BV(TWIE));
 }
 
+void twi_block_until_done() {
+    while (twi_state.sla || (TWCR & _BV(TWSTO))) { /* NARF! */ }
+}
+
 void twi_master_init(void)
 {
     /* No prescaling. */
