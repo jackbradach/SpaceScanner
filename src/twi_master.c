@@ -27,7 +27,7 @@ typedef struct {
 static twi_state_t twi_state = { 0 };
 
 static inline void twi_ack_int(void) {
-    TWCR == (_BV(TWINT) | _BV(TWEN) | _BV(TWIE));
+    TWCR = (_BV(TWINT) | _BV(TWEN) | _BV(TWIE));
 }
 
 void twi_master_init(void)

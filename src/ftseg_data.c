@@ -1,6 +1,7 @@
 static const uint16_t PROGMEM ftseg_data_scan_start[] = {
     0x0008, 0x0014, 0x0222, 0x0001, 0x0200, 0x1000, 0x3800, 0x38C0, 0x3DC0, 0x3FC0
 };
+#define ANIM_SCAN_START_FRAMES (sizeof(ftseg_data_scan_start) / sizeof(uint16_t))
 
 static const uint16_t PROGMEM ftseg_data_scan_active[] = {
     0x3DC0, 0x3BC0, 0x3F40, 0x37C0, 0x2FC0, 0x1FC0, 0x3F80, 0x3EC0

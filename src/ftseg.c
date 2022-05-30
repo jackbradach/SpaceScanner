@@ -5,12 +5,15 @@
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 
+#include "timer.h"
 #include "ftseg.h"
 #include "ftseg_data.c"
+#include "ht16k33.h"
 
 #define FTSEG_DISP_WIDTH 4
 
 static const uint16_t ftseg_data_text[];
+ht16k33_device_handle_t *ht16k33;
 
 
 // XXX - 2022/05/23 - jbradach - what did I need popcnt for?
@@ -32,50 +35,120 @@ static uint8_t popcnt8(uint8_t v) {
 
 
 typedef struct {
-    ftseg_anim_t which;
-    
-
+    ftseg_anim_t anim;
+    uint32_t t_start;
+    uint16_t period_ms;
+    volatile uint8_t idx[HT16K33_DIGITS_PER_DEV];
+    uint16_t pattern[HT16K33_DIGITS_PER_DEV];
+    uint8_t brightness;
+    uint8_t done;
 } ftseg_anim_state_t;
 
-uint16_t ftseg_anim_scan_start(uint8_t digit, uint8_t idx);
-uint16_t ftseg_anim_scan_active(uint8_t digit, uint8_t idx);
 
-// Returns pattern vector of pattern at index.
-uint16_t ftseg_anim(int which, uint8_t digit, uint8_t idx) {
-    uint16_t pattern;
-    switch(which) {
+static ftseg_anim_state_t state = { 0 };
+
+/* These get called by ftseg_anim_update based on the value of state.anim
+ * and update the animation appropriately.
+ */
+void ftseg_anim_scan_start(void);
+void ftseg_anim_scan_active(void);
+
+/* Each digit has a done flag.  If all four are set, the overall
+ * animation is done. */
+bool ftseg_anim_is_done(void) {
+    return (state.done == 0xF);
+}
+
+/* Call to set the current animation. */
+void ftseg_anim_start(ftseg_anim_t which, uint16_t period_ms) {
+    state.anim = which;
+    for (int i = 0; i < 4; i++) {
+        state.idx[i] = 0;
+    }
+    state.t_start = get_ticks_ms();
+    state.period_ms = period_ms;
+    state.brightness = 16;
+    memset(state.pattern, 0, 4 * sizeof(uint16_t));
+    state.done = false;
+}
+
+void ftseg_anim_update() {
+
+    /* Only update every period_ms. */
+    if (get_ticks_ms() - state.t_start < state.period_ms) {
+        return;
+    }
+
+    state.t_start = get_ticks_ms();    
+    switch(state.anim) {
     case FTSEG_ANIM_SCAN_START:
-        pattern = ftseg_anim_scan_start(digit, idx);
+        ftseg_anim_scan_start();
         break;
     case FTSEG_ANIM_SCAN_ACTIVE:
-        pattern = ftseg_anim_scan_active(digit, idx);
+        ftseg_anim_scan_active();
 
         break;
 
     case FTSEG_ANIM_SCAN_SUCCESS:
         break;
     default:
-        pattern = 0;
+        return;
     }
-    return pattern;
+    
+    ht16k33_clear(ht16k33, 0);
+    ht16k33_set_brightness(ht16k33, 0, state.brightness);
+    for (int d = 0; d < HT16K33_DIGITS_PER_DEV; d++) {
+        ht16k33_set_segments(ht16k33, 0, d, state.pattern[d]);
+    }
+    ht16k33_update(ht16k33, 0);
+
 }
 
-#define ANIM_SCAN_START_FRAMES (sizeof(ftseg_data_scan_start) / sizeof(uint16_t))
-uint16_t ftseg_anim_scan_start(uint8_t digit, uint8_t idx) {
-    uint16_t v;
-    if (idx < ANIM_SCAN_START_FRAMES) {
-        v = pgm_read_word(&ftseg_data_scan_start[idx]);
-    } else {
-        v = pgm_read_word(&ftseg_data_scan_start[9]);
+void ftseg_anim_scan_start(void) {
+    if (state.idx[0] == 0) {
+       state.brightness = 16;
     }
-    return v;
+
+    /* The offsets here look neat, kind of a galloping in from the left. */
+    for (int d = 0; d < 4; d++) {
+        uint8_t idx;
+
+        if (state.done & _BV(d)) {
+            continue;
+        }
+
+        if (state.idx[d] - 2 * d > 0) {
+            idx = state.idx[d] - 2 * d;
+        } else {
+            idx = 0;
+        }
+
+        if (!(idx < ANIM_SCAN_START_FRAMES)) {
+            idx = ANIM_SCAN_START_FRAMES - 1;
+            state.done |= _BV(d);
+        }
+        
+        state.pattern[d] = pgm_read_word(&ftseg_data_scan_start[idx]);
+        state.idx[d]++;
+    }
 }
+
+// Scan active should reveal one digit per second, a box locking around each.  On the last one,
+// it should drop the middle upright segments and start flashing like a box around the whole thing.
+// Or should it box around each and then reveal them as it scan them? Maybe extend the box around
+// the new "locked in" values.
+// Fail animation should fade out with a "BRT BRT" or something
+// Animate outline spinner for 30 seconds or so after a success.
+// Change them to + (with a box extend) as they go.  Flash X on fail boxes.
 
 #define ANIM_SCAN_ACTIVE_FRAMES (sizeof(ftseg_data_scan_active) / sizeof(uint16_t))
-uint16_t ftseg_anim_scan_active(uint8_t digit, uint8_t idx) {
-    uint16_t v;
-    v = pgm_read_word(&ftseg_data_scan_active[idx % ANIM_SCAN_ACTIVE_FRAMES]);
-    return v;
+void ftseg_anim_scan_active(void) {
+    // uint16_t v;
+    // if (state.idx == 0) {
+    //     ht16k33_set_brightness(ht16k33, 0, 16);
+    // }
+    // v = pgm_read_word(&ftseg_data_scan_active[state.idx % ANIM_SCAN_ACTIVE_FRAMES]);
+    // return v;
 }
 
 uint16_t ftseg_anim_scan_success(uint8_t digit, uint8_t idx) {
@@ -157,47 +230,35 @@ uint16_t ftseg_spinner(uint8_t idx) {
 //     }
 // }
 
-void ftseg_write_text(ftseg_device_handle_t *dev, int disp, char *text) {
-    ht16k33_clear(dev->ht16k33, disp);
+void ftseg_write_text(char *text) {
+    ht16k33_clear(ht16k33, 0);
     for (uint8_t c = 0; c < strlen(text); c++) {
-        ht16k33_set_segments(dev->ht16k33, disp, c, pgm_read_word(&ftseg_data_text[text[c]]));
+        ht16k33_set_segments(ht16k33, 0, c, pgm_read_word(&ftseg_data_text[text[c]]));
     }
-    ht16k33_update(dev->ht16k33, disp);
+    ht16k33_update(ht16k33, 0);
 }
 
-void ftseg_test(ftseg_device_handle_t *dev, int disp) {
+void ftseg_test() {
     for (int i = 0; i < 16; i++) {
         printf("i = %d\n", i);
         // ht16k33_set_segments(dev->ht16k33, disp, 1, 1 << i);
-        ht16k33_set_segments(dev->ht16k33, disp, 1, 0xffff);
-        ht16k33_update(dev->ht16k33, disp);
+        ht16k33_set_segments(ht16k33, 0, 1, 0xffff);
+        ht16k33_update(ht16k33, 0);
         _delay_ms(2000);
     }
 }
 
 // FIXME - add error checking!
-int ftseg_init(ftseg_device_handle_t **dev) {
-    ftseg_device_handle_t *ftseg;
-
-    ftseg = malloc(sizeof(ftseg_device_handle_t));
+void ftseg_init() {
     // text_sz = (popcnt8(conf->disp_mask) * FTSEG_DISP_WIDTH) + 1;
-    memset(ftseg->text, 0, sizeof(uint8_t) * HT16K33_NDEVS * (HT16K33_DIGITS_PER_DEV + 1));
+    // memset(ftseg->text, 0, sizeof(uint8_t) * HT16K33_NDEVS * (HT16K33_DIGITS_PER_DEV + 1));
 
     // ht16k33_conf.i2c_port = conf->i2c_port;
-    ht16k33_init(&ftseg->ht16k33);
+    ht16k33_init(&ht16k33);
     // ftseg_update(ftseg);
     // ht16k33_set_brightness(&ftseg->ht16k33, 0, 16);
-    
-    *dev = ftseg;
 
     return 0;
-}
-
-void ftseg_destroy(ftseg_device_handle_t **dev) {
-    if (NULL == dev) return;
-    if (NULL == *dev) return;
-    free(*dev);
-    *dev = NULL;
 }
 
 // write to virtual display, can be a single or multiple.

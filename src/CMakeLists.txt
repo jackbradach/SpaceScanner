@@ -9,7 +9,7 @@ set(SRC
     led_gamma.c
     main.c
     neopixels.c
-    # timer.c
+    timer.c
     sdcard.c
 	# spi.c
     twi_master.c
