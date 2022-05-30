@@ -192,15 +192,16 @@ int main(void)
     // }
     // 0x3FC0
 
-    // set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    // sleep_enable();
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_enable();
 
     /* Main application loop! */
     while (1) {
         next();
-        // sleep_cpu();
+        twi_block_until_done();
+        uart_block_until_done();
+        sleep_cpu();
     }
-   
 }
 
 /* Advance state machine. */
