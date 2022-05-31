@@ -167,12 +167,13 @@ void ftseg_anim_scan_active(void) {
             continue;
         }
 
-        state.pattern[d] = pgm_read_word(&ftseg_data_scan_active[state.idx[d]]);
         // printf("d: %d  idx[d]: %d  done: %02x\n", d, state.idx[d], state.done);
-        if (get_ticks_ms() - state.t_start > ((d * 1000) + 1000)) {
+        // FIXME - add a random offset to the state struct for things like this.
+        if (get_ticks_ms() - state.t_start > ((d * 1000) + 750)) {
             state.pattern[d] |= FTSEG_ANIM_OUTLINE;
+        } else {
+            state.pattern[d] = pgm_read_word(&ftseg_data_scan_active[state.idx[d]]);
         }
-
         state.idx[d] = ++state.idx[d] % ANIM_SCAN_ACTIVE_FRAMES;
     }
 }
