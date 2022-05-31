@@ -33,6 +33,7 @@ static uint8_t popcnt8(uint8_t v) {
 // Need to keep animation state.
 // Need to track clean/dirty.  Every write causes a flicker.
 
+#define FTSEG_TEXT_MAX 5
 
 typedef struct {
     ftseg_anim_t anim;
@@ -40,11 +41,13 @@ typedef struct {
     uint16_t period_ms;
     volatile int8_t idx[HT16K33_DIGITS_PER_DEV];
     uint16_t pattern[HT16K33_DIGITS_PER_DEV];
+    uint16_t text[HT16K33_DIGITS_PER_DEV];
     uint8_t brightness;
     uint8_t done;
 } ftseg_anim_state_t;
 
 #define IDX_UNSET -127
+#define FTSEG_PATTERN_DOT _BV(14)
 
 static ftseg_anim_state_t state = { 0 };
 
@@ -178,75 +181,34 @@ uint16_t ftseg_anim_scan_fail(uint8_t digit, uint8_t idx) {
     // USe [+] to show ones that did (no flash).
 }
 
+/* Converts a string into the patterns needed to show
+ * the characters.  Periods are converted to the decimal
+ * point on the character they follow.
+ */
+void ftseg_set_text(char *text) {
+    uint8_t len = strlen(text);
+    ht16k33_clear(ht16k33, 0);
 
-uint16_t ftseg_spinner(uint8_t idx) {
-    return 1 << (idx % 15);
+    // Needs to handle decimal point
+    for (int i, d = 0; i < len; i++) {
+        /* If the next character is a period, set the bit
+         * for the 'point' segment and skip a character.
+         */
+        state.text[d] = pgm_read_word(&ftseg_data_text[text[i]]);
+        if ((i + 1 < len) && (text[i+1] == '.')) {
+            state.text[d] |= FTSEG_PATTERN_DOT;
+            i++;
+        }
+        d++;
+    }
+    for (int i = 0; i < 4; i++) {
+        state.pattern[i] = state.text[i];
+        ht16k33_set_segments(ht16k33, 0, i, state.pattern[i]);
+        printf("%d: %04x\n", i, state.pattern[i]);
+    }
+    ht16k33_update(ht16k33, 0);
+
 }
-
-
-// esp_err_t ftseg_update(ftseg_device_handle_t *ftseg) {
-//     ht16k33_device_handle_t *ht16k33 = ftseg->ht16k33;
-//     const uint8_t sz = popcnt8(ftseg->disp_mask) * FTSEG_DISP_WIDTH;
-//     char *text = ftseg->text;
-//     uint8_t disp = 0;
-//     uint8_t digit = 0;
-//     uint8_t idx = 0;
-
-//     // FIXME: this won't work with discontiguous displays.
-//     // FIXME: add a virtual display lookup table and that
-//     // FIXME: should fix it easy.
-//     for (disp = 0; disp < HT16K33_NDEVS; disp++) {
-//         ht16k33_clear(ht16k33, disp);
-//     }
-    
-//     while (('\0' != text[idx]) && (idx < sz)) {
-//         digit = idx % 4;
-//         disp = idx / 4;
-//         ht16k33_put_char(ht16k33, disp, digit, text[idx]);
-//         idx++;
-//     }
-
-//     for (disp = 0; disp < HT16K33_NDEVS; disp++) {
-//         ht16k33_update(ht16k33, disp);
-//     }
-
-//     return ESP_OK;
-// }
-
-// static void ftseg_event_handler(void* args, esp_event_base_t base, int32_t id, void *data) {
-//     ftseg_device_handle_t *ftseg = args;
-    
-//     ESP_LOGI(TAG, "caught %s.%i -> %04x", base, id, *(uint16_t*) data);
-//     switch (id) {
-//         /* Writes a string to a ht16k33 display */
-//         case FTSEG_EVENT_WRITE_TEXT: {
-//             ftseg_evt_write_text_t *t = data;
-//             ht16k33_clear(ftseg->ht16k33, t->disp);
-//             for (uint8_t c = 0; c < strlen(t->text); c++) {
-//                 ht16k33_set_segments(ftseg->ht16k33, t->disp, c, ftseg_data_text[(uint8_t) toupper(t->text[c])]);
-//             }
-//             ht16k33_update(ftseg->ht16k33, t->disp);
-//             break;
-//         }
-//         /* Writes segments directly to a ht16k33 display */
-//         case FTSEG_EVENT_WRITE_SEGMENTS: {
-//             ftseg_evt_write_segments_t *s = data;
-//             ht16k33_clr_segments(ftseg->ht16k33, s->disp, s->idx, 0xFFFF);
-//             ht16k33_set_segments(ftseg->ht16k33, s->disp, s->idx, s->segments);
-//             break;
-//         }
-//         /* Change brightness */
-//         case FTSEG_EVENT_SET_BRIGHTNESS: {
-//             ftseg_evt_brightness_t *b = data;
-//             for (uint8_t disp = 0; disp < 4; disp++) {
-//                 if (b->display_mask & (1 << disp)) {
-//                     ht16k33_set_brightness(ftseg->ht16k33, disp, b->brightness);
-//                 }
-//             }
-//             break;
-//         }
-//     }
-// }
 
 void ftseg_write_text(char *text) {
     ht16k33_clear(ht16k33, 0);
@@ -256,12 +218,18 @@ void ftseg_write_text(char *text) {
     ht16k33_update(ht16k33, 0);
 }
 
+void ftseg_enable_decimal_point(bool enable) {
+    ht16k33_enable_decimal_point(ht16k33, enable);
+}
+
+
 void ftseg_test() {
     for (int i = 0; i < 16; i++) {
         printf("i = %d\n", i);
         // ht16k33_set_segments(dev->ht16k33, disp, 1, 1 << i);
-        ht16k33_set_segments(ht16k33, 0, 1, 0xffff);
+        ht16k33_set_segments(ht16k33, 0, 3, 0xffff);
         ht16k33_update(ht16k33, 0);
+        
         _delay_ms(2000);
     }
 }

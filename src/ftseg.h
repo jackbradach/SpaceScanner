@@ -69,12 +69,12 @@ void ftseg_init(void);
 /* Sets the ftseg text buffer. */
 void ftseg_set_text(char *text);
 void ftseg_test(void);
+void ftseg_enable_decimal_point(bool enable);
 
 /* 14-segment Animations */
 void ftseg_anim_start(ftseg_anim_t which, uint16_t period_ms);
 void ftseg_anim_update(void);
 bool ftseg_anim_is_done(void);
-
 // ESP_EVENT_DECLARE_BASE(FTSEG_EVENTS);
 // enum {
 //     FTSEG_EVENT_WRITE_TEXT,

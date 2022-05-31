@@ -146,51 +146,13 @@ int main(void)
     init();
     
     printf("\n** Alive!! **\n");
+
     // while (1) {
-    //     /* Start scan*/
-    //     ftseg_anim_start(FTSEG_ANIM_SCAN_START, 60);
-    //     while (!ftseg_anim_is_done()) {
-    //         ftseg_anim_update();
-    //     }
-    //     /* Active scan */
-    //     ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 60);
-    //     while (!ftseg_anim_is_done()) {
-    //         ftseg_anim_update();
-    //     }
+    //     // ftseg_set_text("ABC.D");
+    //     ftseg_test();
+    //     // ftseg_update();
     //     _delay_ms(2000);
     // }
-
-
-    // ht16k33_set_brightness(ht16k33, 0, 16);
-    // for (int i = 0; i < 20; i++) {
-    //     ht16k33_clear(ht16k33, 0);
-    //     for (int d = 0; d < 4; d++) {
-    //         uint16_t pat;
-    //         uint8_t idx;
-    //         if (i - 2 * d > 0) {
-    //             idx = i - 2 * d;
-    //         } else {
-    //             idx = 0;
-    //         }
-    //         pat = ftseg_anim(FTSEG_ANIM_SCAN_START, d, i - 2*d);
-    //         ht16k33_set_segments(ht16k33, 0, d, pat);
-    //         ht16k33_update(ht16k33, 0);
-    //     }
-    //     _delay_ms(60);
-    // }
-
-    // for (uint8_t idx = 0; idx < 100 ; idx++) {
-    //     ht16k33_clear(ht16k33, 0);
-    //     for (int d = 0; d < 4; d++) {
-    //         uint16_t pat;
-    //         pat = ftseg_anim(FTSEG_ANIM_SCAN_ACTIVE, d, idx + 2 * d);
-    //         ht16k33_set_segments(ht16k33, 0, d, pat);
-    //         ht16k33_update(ht16k33, 0);
-    //     }
-    //     _delay_ms(60);
-    // }
-    // }
-    // 0x3FC0
 
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
@@ -241,14 +203,14 @@ fsm_t next() {
             // ftseg_write_text(ftseg, 0, "");
             ht16k33_clear(ht16k33, 0);
             ht16k33_update(ht16k33, 0);
-            ftseg_anim_start(FTSEG_ANIM_SCAN_START, 60);
+            ftseg_anim_start(FTSEG_ANIM_SCAN_START, 45);
             fsm = SCANNING_START;
         }
         break;
 
     case SCANNING_START:
         if (ftseg_anim_is_done()) {
-            ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 60);
+            ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 45);
             fsm = SCANNING_ACTIVE;
         } else {
             ftseg_anim_update();
@@ -273,6 +235,10 @@ fsm_t next() {
 
     case WRITE_FTSEG:
         ftseg_write_text(text);
+        printf("last_buttons: %0x\n", last_buttons);
+        if (last_buttons != BUTTONS_YELLOW) {
+            ftseg_enable_decimal_point(1);
+        }
         fsm = FADE_UP_FTSEG;
         break;
 
@@ -297,9 +263,9 @@ fsm_t next() {
     default:
         fsm = RESET;
     }
-    if (last != fsm) {
-        printf("FSM: %d->%d\n", last, fsm);
-    }
+    // if (last != fsm) {
+    //     printf("FSM: %d->%d\n", last, fsm);
+    // }
     return fsm;
 }
 
