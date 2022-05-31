@@ -15,7 +15,7 @@
 static const uint16_t ftseg_data_text[];
 ht16k33_device_handle_t *ht16k33;
 
-
+#define FTSEG_ANIM_OUTLINE 0x3F
 // XXX - 2022/05/23 - jbradach - what did I need popcnt for?
 #if 0
 /* 8-bit population count */
@@ -38,6 +38,7 @@ static uint8_t popcnt8(uint8_t v) {
 typedef struct {
     ftseg_anim_t anim;
     uint32_t t_start;
+    uint32_t t_tick;
     uint16_t period_ms;
     volatile int8_t idx[HT16K33_DIGITS_PER_DEV];
     uint16_t pattern[HT16K33_DIGITS_PER_DEV];
@@ -70,6 +71,7 @@ void ftseg_anim_start(ftseg_anim_t which, uint16_t period_ms) {
         state.idx[i] = IDX_UNSET;
     }
     state.t_start = get_ticks_ms();
+    state.t_tick = state.t_start;
     state.period_ms = period_ms;
     state.brightness = 0xF;
     memset(state.pattern, 0, 4 * sizeof(uint16_t));
@@ -79,11 +81,11 @@ void ftseg_anim_start(ftseg_anim_t which, uint16_t period_ms) {
 void ftseg_anim_update() {
 
     /* Only update every period_ms. */
-    if (get_ticks_ms() - state.t_start < state.period_ms) {
+    if (get_ticks_ms() - state.t_tick < state.period_ms) {
         return;
     }
 
-    state.t_start = get_ticks_ms();    
+    state.t_tick = get_ticks_ms();    
     switch(state.anim) {
     case FTSEG_ANIM_SCAN_START:
         ftseg_anim_scan_start();
@@ -166,9 +168,12 @@ void ftseg_anim_scan_active(void) {
         }
 
         state.pattern[d] = pgm_read_word(&ftseg_data_scan_active[state.idx[d]]);
-        state.idx[d] = ++state.idx[d] % ANIM_SCAN_ACTIVE_FRAMES;
         // printf("d: %d  idx[d]: %d  done: %02x\n", d, state.idx[d], state.done);
+        if (get_ticks_ms() - state.t_start > ((d * 1000) + 1000)) {
+            state.pattern[d] |= FTSEG_ANIM_OUTLINE;
+        }
 
+        state.idx[d] = ++state.idx[d] % ANIM_SCAN_ACTIVE_FRAMES;
     }
 }
 
