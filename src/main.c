@@ -114,7 +114,7 @@ static void init(void)
     timer_init();
     uart_init();
     prng_init();
-    // dac_init();
+    dac_init();
     // spi_init();d
     // sdcard_init();
     twi_master_init();
@@ -147,12 +147,12 @@ int main(void)
     
     printf("\n** Alive!! **\n");
 
-    // while (1) {
-    //     // ftseg_set_text("ABC.D");
-    //     ftseg_test();
-    //     // ftseg_update();
-    //     _delay_ms(2000);
-    // }
+    dac_test();
+    _delay_ms(3000);
+    // while (buttons == 0) { }
+    TCCR1B = 0;
+    DDRB = 0;
+
 
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
@@ -220,7 +220,12 @@ fsm_t next() {
     case SCANNING_ACTIVE:
         ftseg_anim_update();
         if (!buttons) {
-            fsm = READ_DHT22;
+            if (ftseg_anim_is_done()) {
+                // This should go to SCAN_SUCCESS
+                fsm = READ_DHT22;
+            } else {
+                // This should go to SCAN_FAIL
+            }
         }
         break;
 

@@ -1,4 +1,6 @@
+#include <stdbool.h>
 #include <stdio.h>
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
@@ -6,6 +8,7 @@
 
 #include "config.h"
 #include "dac.h"
+#include "dbg.h"
 
 #define DAC_PORT CONFIG_DAC_PORT
 #define DAC_BIT_A CONFIG_DAC_BIT_A 
@@ -20,6 +23,14 @@ static uint8_t audio_data;
 #define SINE_LENGTH 256
 extern const uint8_t sinewave[SINE_LENGTH];
 
+#define NVOICES 3
+typedef struct {
+    uint8_t idx[NVOICES];
+    uint8_t acc[NVOICES];
+
+} voices_t;
+
+voices_t voices = { 0 };
 
 volatile uint8_t sine_idx;
 
@@ -27,16 +38,22 @@ const uint16_t A4_FREQ = 440;
 #define TIMER1_PRESCALER 8
 #define A4 (F_CPU / (A4_FREQ * TIMER1_PRESCALER) - 1)
 
+typedef enum {
+    WAVE_NONE,
+    WAVE_TRIANGLE,
+    WAVE_SAW,
+    WAVE_SINE,
+    WAVE_NOISE
+} waves;
+
 void dac_init() {
     audio_data = 0;
     sine_idx = 0;
-    // setup PWM
  
+    OCR1A = 0;
     TCCR1A = _BV(COM1A1) |  _BV(WGM10);
-    //   | _BV(WGM11) | _BV(WGM10);
-    TCCR1B =  _BV(CS10) | _BV(CS10) | _BV(WGM12);
+    TCCR1B = _BV(CS10) | _BV(WGM12);
     TIMSK1 = 0;
-    // TCCR1B = _BV(WGM12) | _BV(CS10);
 
     // TCCR1A = (((PWM_QTY - 1) << 5) | 0x80 | (PWM_MODE << 1)); // 
     // TCCR1B = ((PWM_MODE << 3) | 0x11); // ck/1
@@ -45,13 +62,6 @@ void dac_init() {
     // ICR1L = (PWM_FREQ & 0xff);
     PORTB = 0;
     DDRB |= (DAC_BIT_A | DAC_BIT_B); // turn on outputs
-
-
-    // XXX disable tone:
-    // TCCR1B = 0;
-
-    OCR1A = 77;
-    // OCR1A = 0;
 
     TCNT2 = 0;
     // 8000 Hz (16000000/((249+1)*8))
@@ -66,14 +76,29 @@ void dac_init() {
 
 void dac_set_value(uint16_t v);
 
+void dac_test(void) {
+    voices.acc[0] = 10;
+    voices.acc[1] = 6;
+    voices.acc[2] = 20;
 
+}
 
 ISR(TIMER2_COMPA_vect) {
-    uint8_t v = pgm_read_byte(&sinewave[sine_idx++]);
-    // sine_idx++;
-    // OCR1A = v;
-    // audio_data = 0;
-// }
+    static uint16_t lfsr = 0xACE1;
+    uint8_t v = 0;
+    for (uint8_t i = 0; i < NVOICES; i++) {
+        uint8_t idx;
+        uint8_t acc;
+        idx = voices.idx[i];
+        acc = voices.acc[i];
+        v += pgm_read_byte(&sinewave[idx + acc]);
+        voices.idx[i] += acc;
+    }
+    lfsr ^= lfsr >> 7;
+    lfsr ^= lfsr << 9;
+    lfsr ^= lfsr >> 13;
+    // v+= lfsr >> 8;
+    OCR1A = lfsr;
 }
 
 const uint8_t  sinewave[] PROGMEM = {

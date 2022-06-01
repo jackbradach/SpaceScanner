@@ -171,6 +171,7 @@ void ftseg_anim_scan_active(void) {
         // FIXME - add a random offset to the state struct for things like this.
         if (get_ticks_ms() - state.t_start > ((d * 1000) + 750)) {
             state.pattern[d] |= FTSEG_ANIM_OUTLINE;
+            state.done |= _BV(d);
         } else {
             state.pattern[d] = pgm_read_word(&ftseg_data_scan_active[state.idx[d]]);
         }
