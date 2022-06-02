@@ -162,7 +162,6 @@ void ftseg_anim_scan_active(void) {
 
     /* The offsets here look neat, kind of a galloping in from the left. */
     for (int d = 0; d < 4; d++) {
-        uint8_t idx;
         if (state.done & _BV(d)) {
             continue;
         }
@@ -181,11 +180,13 @@ void ftseg_anim_scan_active(void) {
 
 uint16_t ftseg_anim_scan_success(uint8_t digit, uint8_t idx) {
     // Flash [+] across digits?
+    return 0;
 }
 
 uint16_t ftseg_anim_scan_fail(uint8_t digit, uint8_t idx) {
     // Flash [X] across digits that didn't lock.
     // USe [+] to show ones that did (no flash).
+    return 0;
 }
 
 /* Converts a string into the patterns needed to show
@@ -197,11 +198,11 @@ void ftseg_set_text(char *text) {
     ht16k33_clear(ht16k33, 0);
 
     // Needs to handle decimal point
-    for (int i, d = 0; i < len; i++) {
+    for (int i = 0, d = 0; i < len; i++) {
         /* If the next character is a period, set the bit
          * for the 'point' segment and skip a character.
          */
-        state.text[d] = pgm_read_word(&ftseg_data_text[text[i]]);
+        state.text[d] = pgm_read_word(&ftseg_data_text[(uint8_t) text[i]]);
         if ((i + 1 < len) && (text[i+1] == '.')) {
             state.text[d] |= FTSEG_PATTERN_DOT;
             i++;
@@ -217,10 +218,11 @@ void ftseg_set_text(char *text) {
 
 }
 
+// FIXME - merge this functionality with set_text!
 void ftseg_write_text(char *text) {
     ht16k33_clear(ht16k33, 0);
     for (uint8_t c = 0; c < strlen(text); c++) {
-        ht16k33_set_segments(ht16k33, 0, c, pgm_read_word(&ftseg_data_text[text[c]]));
+        ht16k33_set_segments(ht16k33, 0, c, pgm_read_word(&ftseg_data_text[(uint8_t) text[c]]));
     }
     ht16k33_update(ht16k33, 0);
 }
@@ -251,7 +253,6 @@ void ftseg_init() {
     // ftseg_update(ftseg);
     // ht16k33_set_brightness(&ftseg->ht16k33, 0, 16);
 
-    return 0;
 }
 
 // write to virtual display, can be a single or multiple.
