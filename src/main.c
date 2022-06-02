@@ -13,6 +13,7 @@
 #include "dbg.h"
 #include "dht22.h"
 #include "ftseg.h"
+#include "fx.h"
 #include "ht16k33.h"
 #include "neopixels.h"
 #include "spi.h"
@@ -130,7 +131,7 @@ static void init(void)
 
     ftseg_init();
     dht22_init();
- 
+    fx_init();
 
 }
 
@@ -138,6 +139,15 @@ static void init(void)
 void format_text(char *text, dht22_measurement_t *meas, uint8_t buttons);
 
 fsm_t next();
+
+void try_sleep(void) {
+    if (!fx_is_done()) {
+        return;
+    }
+    twi_block_until_done();
+    uart_block_until_done();
+    sleep_cpu();
+}
 
 /* Micocontroller firmware entry point */
 int main(void) __attribute__((OS_main));
@@ -147,22 +157,18 @@ int main(void)
     
     printf("\n** Alive!! **\n");
 
-    dac_test();
-    _delay_ms(3000);
+    // fx_test();
+    // _delay_ms(1000);
     // while (buttons == 0) { }
-    TCCR1B = 0;
-    DDRB = 0;
-
 
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
 
     /* Main application loop! */
+
     while (1) {
         next();
-        twi_block_until_done();
-        uart_block_until_done();
-        sleep_cpu();
+        try_sleep();
     }
 }
 
@@ -173,9 +179,6 @@ fsm_t next() {
     static dht22_measurement_t meas;
     static int8_t ftseg_brightness;
     static uint32_t t_start;
-    static uint8_t idx;
-
-    fsm_t last = fsm;
 
     switch (fsm) {
     case RESET:
@@ -200,16 +203,17 @@ fsm_t next() {
                 t_start = get_ticks_ms();
             }
         } else {
-            // ftseg_write_text(ftseg, 0, "");
             ht16k33_clear(ht16k33, 0);
             ht16k33_update(ht16k33, 0);
             ftseg_anim_start(FTSEG_ANIM_SCAN_START, 45);
+            fx_play(FX_STATIC, true);
             fsm = SCANNING_START;
         }
         break;
 
     case SCANNING_START:
         if (ftseg_anim_is_done()) {
+            fx_stop();
             ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 45);
             fsm = SCANNING_ACTIVE;
         } else {
@@ -239,10 +243,11 @@ fsm_t next() {
         break;
 
     case WRITE_FTSEG:
+        // FIXME - 2022/06/01 - jbradach - make this use ftseg_set_text! (or rename function?)
         ftseg_write_text(text);
         printf("last_buttons: %0x\n", last_buttons);
         if (last_buttons != BUTTONS_YELLOW) {
-            ftseg_enable_decimal_point(1);
+            ftseg_enable_decimal_point(true);
         }
         fsm = FADE_UP_FTSEG;
         break;
@@ -271,6 +276,8 @@ fsm_t next() {
     // if (last != fsm) {
     //     printf("FSM: %d->%d\n", last, fsm);
     // }
+    fx_calc_next_sample();
+
     return fsm;
 }
 

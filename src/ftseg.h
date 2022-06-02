@@ -67,6 +67,7 @@ typedef struct {
 void ftseg_init(void);
 
 /* Sets the ftseg text buffer. */
+void ftseg_write_text(char *text);
 void ftseg_set_text(char *text);
 void ftseg_test(void);
 void ftseg_enable_decimal_point(bool enable);

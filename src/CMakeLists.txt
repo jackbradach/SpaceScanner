@@ -5,12 +5,13 @@ set(SRC
     dbg.c
     dht22.c
     ftseg.c
+    fx.c
     ht16k33.c
     led_gamma.c
     main.c
     neopixels.c
     timer.c
-    sdcard.c
+    # sdcard.c
 	# spi.c
     twi_master.c
     uart.c
