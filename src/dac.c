@@ -20,7 +20,7 @@ void dac_init() {
     OCR1A = 0;
     TIMSK1 = 0;
     PORTB = 0;
-    TCCR1A = _BV(COM1A1) |  _BV(WGM10);
+    TCCR1A = _BV(COM1A1) |  _BV(WGM11) | _BV(WGM10);
     TCCR1B = _BV(WGM12);
 
     // CTC @ 8000 Hz (16000000/((249+1)*8))
@@ -49,6 +49,7 @@ void dac_start() {
 void dac_stop() {
     TCCR1B &= ~_BV(CS10);
     TCCR2B &= ~(_BV(CS21) | _BV(CS20));
+    OCR1A = 0;
 }
 
 ISR(TIMER2_COMPA_vect) {

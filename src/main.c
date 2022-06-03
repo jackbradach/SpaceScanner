@@ -65,6 +65,7 @@ fsm_t fsm = RESET;
 // };
 
 #define FTSEG_FADE_PERIOD_MS 10UL
+#define FTSEG_BEEP_PERIOD_MS 100UL
 #define FTSEG_SPINNER_PERIOD_MS 50UL
 #define BUTTONS_PORT PORTD
 #define BUTTONS_PIN PIND
@@ -116,23 +117,15 @@ static void init(void)
     uart_init();
     prng_init();
     dac_init();
-    // spi_init();d
-    // sdcard_init();
     twi_master_init();
     buttons_init();
-
-   
 
     /* Inits past this point require interrupts. */
     sei();
 
-    // do ADC read
-
-
     ftseg_init();
     dht22_init();
     fx_init();
-
 }
 
 
@@ -213,7 +206,7 @@ fsm_t next() {
 
     case SCANNING_START:
         if (ftseg_anim_is_done()) {
-            fx_stop();
+            fx_play(FX_TRIANGLE, true);
             ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 45);
             fsm = SCANNING_ACTIVE;
         } else {
@@ -222,10 +215,19 @@ fsm_t next() {
         break;
 
     case SCANNING_ACTIVE:
+        if (get_ticks_ms() - t_start > FTSEG_BEEP_PERIOD_MS) {
+            uint16_t freq;
+            freq = (rand() % 100) << 10;
+            printf("f: %d\n", freq);
+            fx_set_freq(freq);
+            t_start = get_ticks_ms();
+        }
+
         ftseg_anim_update();
         if (!buttons) {
             if (ftseg_anim_is_done()) {
                 // This should go to SCAN_SUCCESS
+                fx_stop();
                 fsm = READ_DHT22;
             } else {
                 // This should go to SCAN_FAIL
