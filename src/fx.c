@@ -52,8 +52,9 @@ typedef struct {
     volatile uint16_t sample;
     volatile uint16_t prev_sample;
     volatile uint8_t flags;
-    uint8_t acc;
-    uint8_t idx;
+    uint16_t freq;
+    uint16_t acc;
+    uint16_t idx;
 } fx_state_t;
 
 static volatile fx_state_t state = { 0 };
@@ -68,12 +69,16 @@ static volatile fx_state_t state = { 0 };
 #define FX_SAMPLE_WIDTH 8
 
 
-uint16_t fx_next_sample(void);
-static uint16_t fx_sound_static(void);
 static uint16_t fx_consume_next_sample(void);
+static uint16_t fx_sound_static(void);
+static uint16_t fx_sound_triangle(void);
 
 void fx_init(void) {
     dac_set_sampler_cb(fx_consume_next_sample);
+}
+
+void fx_set_freq(uint16_t freq) {
+    state.freq = freq;
 }
 
 void fx_play(fx_sound_t sound, bool loop) {
@@ -124,10 +129,15 @@ void fx_calc_next_sample(void) {
     case FX_STATIC:
         state.sample = fx_sound_static();    
         break;
+    case FX_TRIANGLE:
+        state.sample = fx_sound_triangle();
+        break;
     default:
         return;
     }
 
+    state.acc += state.freq;
+    
     state.flags |= _BV(FX_FLAG_VALID);
 }
 
@@ -135,7 +145,6 @@ void fx_test(void) {
     uint32_t i = 0;
     fx_play(FX_STATIC, true);
     while(1) {
-        
         if (i == 0xffffffff) {
             break;
         }
@@ -149,6 +158,14 @@ static uint16_t fx_sound_static(void) {
     lfsr ^= lfsr << 9;
     lfsr ^= lfsr >> 13;
     return lfsr;
+}
+
+static uint16_t fx_sound_triangle(void) {
+    uint16_t v;
+    v += state.freq;
+    v = (state.acc & 0x8000) ? ~state.acc : state.acc;
+    v = (v >> 4) & 0xFFF;
+    return v;
 }
 
 // TODO - store this as a quarter-wave!

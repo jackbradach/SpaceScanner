@@ -4,6 +4,7 @@
 typedef enum {
     // FX_NONE,
     FX_STATIC,
+    FX_TRIANGLE
     // FX_STARTUP
 } fx_sound_t;
 
