@@ -230,12 +230,19 @@ fsm_t next() {
                 // This should go to SCAN_SUCCESS
                 fsm = READ_DHT22;
             } else {
-                fsm = IDLE;
+                fsm = SCANNING_FAIL;
 
                 // This should go to SCAN_FAIL
             }
         }
         break;
+
+    case SCANNING_FAIL:
+        fsm = IDLE;
+        ht16k33_clear(ht16k33, 0);
+        ht16k33_update(ht16k33, 0);
+        break;
+
 
     case READ_DHT22:
         dht22_read(&meas);
