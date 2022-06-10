@@ -1,10 +1,13 @@
 #ifndef __FX_H__
 #define __FX_H__
 
+#include <stdbool.h>
+
 typedef enum {
     // FX_NONE,
     FX_STATIC,
-    FX_TRIANGLE
+    FX_TRIANGLE,
+    FX_TRIPLE_TRIANGLE
     // FX_STARTUP
 } fx_sound_t;
 

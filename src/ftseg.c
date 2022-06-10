@@ -5,10 +5,13 @@
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 
+#include "fx.h"
 #include "timer.h"
 #include "ftseg.h"
 #include "ftseg_data.c"
 #include "ht16k33.h"
+
+// TODO - split out some of this into an animation library that calls both ftseg and fx.
 
 #define FTSEG_DISP_WIDTH 4
 
