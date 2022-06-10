@@ -15,14 +15,13 @@
 #define SINE_LENGTH 256
 extern const uint8_t sinewave[SINE_LENGTH];
 
+
 #define NVOICES 3
 typedef struct {
-    uint8_t idx[NVOICES];
-    uint8_t acc[NVOICES];
+    uint16_t acc;
+    uint16_t freq;
 
 } voices_t;
-
-voices_t voices = { 0 };
 
 volatile uint8_t sine_idx;
 
@@ -55,6 +54,7 @@ typedef struct {
     uint16_t freq;
     uint16_t acc;
     uint16_t idx;
+    voices_t voices[NVOICES];
 } fx_state_t;
 
 static volatile fx_state_t state = { 0 };
@@ -72,6 +72,7 @@ static volatile fx_state_t state = { 0 };
 static uint16_t fx_consume_next_sample(void);
 static uint16_t fx_sound_static(void);
 static uint16_t fx_sound_triangle(void);
+static uint16_t fx_sound_triple_triangle(void);
 
 void fx_init(void) {
     dac_set_sampler_cb(fx_consume_next_sample);
@@ -79,6 +80,9 @@ void fx_init(void) {
 
 void fx_set_freq(uint16_t freq) {
     state.freq = freq;
+    for (uint8_t i = 0; i < NVOICES; i++) {
+        state.voices[i].freq = freq + (100 * i);
+    }
 }
 
 void fx_play(fx_sound_t sound, bool loop) {
@@ -132,12 +136,20 @@ void fx_calc_next_sample(void) {
     case FX_TRIANGLE:
         state.sample = fx_sound_triangle();
         break;
+    case FX_TRIPLE_TRIANGLE:
+        state.sample = fx_sound_triple_triangle();
+        break;
     default:
         return;
     }
 
     state.acc += state.freq;
     
+    // for (uint8_t i = 0; i < NVOICES; i++) {
+    //     state.voices[i].acc += state.voices[i].freq;
+    //     state.voices[i].freq = (rand() % 100) << 10;
+    // }
+
     state.flags |= _BV(FX_FLAG_VALID);
 }
 
@@ -162,10 +174,21 @@ static uint16_t fx_sound_static(void) {
 
 static uint16_t fx_sound_triangle(void) {
     uint16_t v;
-    v += state.freq;
     v = (state.acc & 0x8000) ? ~state.acc : state.acc;
     v = (v >> 4) & 0xFFF;
     return v;
+}
+
+static uint16_t fx_sound_triple_triangle(void) {
+    uint16_t sample = 0;
+    for (uint8_t i = 0; i < NVOICES; i++) {
+        uint16_t acc = state.voices[i].acc;
+        state.voices[i].acc = (acc & 0x8000) ? ~acc : acc;
+        sample += state.voices[i].acc;
+    }
+
+    printf("%d ", sample);
+    return sample;
 }
 
 // TODO - store this as a quarter-wave!

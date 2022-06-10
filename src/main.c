@@ -206,6 +206,7 @@ fsm_t next() {
 
     case SCANNING_START:
         if (ftseg_anim_is_done()) {
+            // fx_play(FX_TRIPLE_TRIANGLE, true);
             fx_play(FX_TRIANGLE, true);
             ftseg_anim_start(FTSEG_ANIM_SCAN_ACTIVE, 45);
             fsm = SCANNING_ACTIVE;
@@ -218,18 +219,19 @@ fsm_t next() {
         if (get_ticks_ms() - t_start > FTSEG_BEEP_PERIOD_MS) {
             uint16_t freq;
             freq = (rand() % 100) << 10;
-            printf("f: %d\n", freq);
             fx_set_freq(freq);
             t_start = get_ticks_ms();
         }
 
         ftseg_anim_update();
         if (!buttons) {
+            fx_stop();
             if (ftseg_anim_is_done()) {
                 // This should go to SCAN_SUCCESS
-                fx_stop();
                 fsm = READ_DHT22;
             } else {
+                fsm = IDLE;
+
                 // This should go to SCAN_FAIL
             }
         }
