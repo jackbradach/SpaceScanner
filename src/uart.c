@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <util/delay.h>
 
 #include "config.h"
 #if defined(CONFIG_UART_TX_USE_IRQ) || defined(CONFIG_UART_RX_USE_IRQ)
@@ -107,3 +108,9 @@ ISR(USART_UDRE_vect) {
 }
 #endif
 
+// FIXME - 2022/05/29 - Make this actually block until active transmits
+// FIXME - are completed.  The 200us here is long enough to delay on
+// FIXME - anything being sent before sleep gets called.
+void uart_block_until_done(void) {
+    _delay_us(200);
+}
