@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.7)
 
 project(SpaceScanner)
 
-SET (CMAKE_C_COMPILER_WORKS 1)
-SET (CMAKE_CXX_COMPILER_WORKS 1)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/avr-gcc.toolchain.cmake")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -63,11 +62,11 @@ set(AVR_H_FUSE 0xDA)
 set(AVR_E_FUSE 0xFD)
 
 set(MCU_SPEED 16000000)
-#link_directories("/usr/avr/lib")
+#link_directories("/usr/lib/avr")
 
 # Ugly, fix.
 set (CMAKE_EXE_LINKER_FLAGS
-    "-Wl,-L/usr/avr/lib -Wl,-T/usr/avr/lib/ldscripts/avr5.xn -Wl,-u,vfprintf -lprintf_flt")
+    "-Wl,-L/usr/lib/avr/lib -Wl,-T/usr/lib/avr/lib/ldscripts/avr5.xn -Wl,-u,vfprintf -lprintf_flt")
 
 include(avr-gcc.toolchain)
 
