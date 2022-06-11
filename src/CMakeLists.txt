@@ -7,9 +7,9 @@ set(SRC
     ftseg.c
     fx.c
     ht16k33.c
-    led_gamma.c
+    # led_gamma.c
     main.c
-    neopixels.c
+    # neopixels.c
     timer.c
     twi_master.c
     uart.c
