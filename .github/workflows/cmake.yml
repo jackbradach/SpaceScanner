@@ -22,8 +22,6 @@ jobs:
     steps:
     - uses:
       - actions/checkout@v3
-      - actions/upload-artifact@v3
-
 
     - name: Install packages
       run: (sudo apt-get update
@@ -60,7 +58,7 @@ jobs:
       run: ctest -C ${{env.BUILD_TYPE}}
     
     - name: Archive production artifacts
-        with:
-          name: firmware
-          path: |
-            ${{github.workspace}}/build/src/ft-atmega328p.elf
+      uses: actions/upload-artifact@v3
+      with:
+        name: firmware
+        path: ${{github.workspace}}/build/src/ft-atmega328p.elf
