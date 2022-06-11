@@ -6,6 +6,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#include <avr/wdt.h> 
 #include <util/delay.h>
 
 #include "config.h"
@@ -15,12 +16,11 @@
 #include "ftseg.h"
 #include "fx.h"
 #include "ht16k33.h"
-#include "neopixels.h"
+// #include "neopixels.h"
 #include "spi.h"
 #include "uart.h"
 #include "twi_master.h"
 #include "timer.h"
-#include <avr/wdt.h> 
 
 /* Application state; extend as needed! */
 // typedef enum {
