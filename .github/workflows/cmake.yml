@@ -60,4 +60,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: firmware
-        path: ${{github.workspace}}/build/src/ft-atmega328p.elf
+        path: ${{github.workspace}}/build/src/fw-atmega328p.elf
